@@ -1,27 +1,19 @@
 import React from 'react';
-import logo from '../../assets/img/logo.svg';
-import Greetings from '../../containers/Greetings/Greetings';
-import './Popup.css';
 
-const Popup = () => {
+function Popup() {
+  const sendMessage = (action) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(tabs[0].id, { action });
+    });
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/pages/Popup/Popup.jsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React!
-        </a>
-      </header>
+    <div>
+      <h1>Tinder Swiping Bot</h1>
+      <button onClick={() => sendMessage('start')}>Start Swiping</button>
+      <button onClick={() => sendMessage('stop')}>Stop Swiping</button>
     </div>
   );
-};
+}
 
 export default Popup;
