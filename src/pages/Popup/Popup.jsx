@@ -1,5 +1,5 @@
 import React from 'react';
-
+import Button from 'react-bootstrap/Button';
 function Popup() {
   const sendMessage = (action) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -10,9 +10,9 @@ function Popup() {
   return (
     <div>
       <h1>Tinder Swiping Bot</h1>
-      <button onClick={() => sendMessage('start')}>Start Swiping</button>
-      <button onClick={() => sendMessage('stop')}>Stop Swiping</button>
-      <button onClick={() => chrome.runtime.openOptionsPage()}>Options</button>
+      <Button variant="success" onClick={() => sendMessage('start')}>Start Swiping</Button>
+      <Button variant="danger" onClick={() => sendMessage('stop')}>Stop Swiping</Button>
+      <Button variant="primary" onClick={() => chrome.runtime.openOptionsPage()}>Options</Button>
     </div>
   );
 }
