@@ -27,10 +27,22 @@ var compiler = webpack(config);
 
 var server = new WebpackDevServer(
   {
-    https: false,
+    server: {
+      type: 'https',
+      options: {
+        key: path.resolve(__dirname, '../key.pem'),
+        cert: path.resolve(__dirname, '../cert.pem'),
+      },
+    },
     hot: true,
     liveReload: true,
     client: {
+      webSocketURL: {
+        protocol: 'wss',
+        hostname: 'localhost',
+        port: env.PORT,
+        pathname: '/ws',
+      },
       webSocketTransport: 'sockjs',
     },
     webSocketServer: 'sockjs',
@@ -40,7 +52,7 @@ var server = new WebpackDevServer(
       directory: path.join(__dirname, '../build'),
     },
     devMiddleware: {
-      publicPath: `http://localhost:${env.PORT}/`,
+      publicPath: `https://localhost:${env.PORT}/`,
       writeToDisk: true,
     },
     headers: {

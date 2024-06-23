@@ -13,7 +13,7 @@ const ASSET_PATH = process.env.ASSET_PATH || '/';
 
 var alias = {};
 
-// load the secrets
+// Load the secrets
 var secretsPath = path.join(__dirname, 'secrets.' + env.NODE_ENV + '.js');
 
 var fileExtensions = [
@@ -38,7 +38,6 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 var options = {
   mode: process.env.NODE_ENV || 'development',
   entry: {
-    newtab: path.join(__dirname, 'src', 'pages', 'Newtab', 'index.jsx'),
     options: path.join(__dirname, 'src', 'pages', 'Options', 'index.jsx'),
     popup: path.join(__dirname, 'src', 'pages', 'Popup', 'index.jsx'),
     background: path.join(__dirname, 'src', 'pages', 'Background', 'index.js'),
@@ -58,9 +57,9 @@ var options = {
   module: {
     rules: [
       {
-        // look for .css or .scss files
+        // Look for .css or .scss files
         test: /\.(css|scss)$/,
-        // in the `src` directory
+        // In the `src` directory
         use: [
           {
             loader: 'style-loader',
@@ -80,10 +79,6 @@ var options = {
         test: new RegExp('.(' + fileExtensions.join('|') + ')$'),
         type: 'asset/resource',
         exclude: /node_modules/,
-        // loader: 'file-loader',
-        // options: {
-        //   name: '[name].[ext]',
-        // },
       },
       {
         test: /\.html$/,
@@ -136,7 +131,7 @@ var options = {
     isDevelopment && new ReactRefreshWebpackPlugin(),
     new CleanWebpackPlugin({ verbose: false }),
     new webpack.ProgressPlugin(),
-    // expose and write the allowed env vars on the compiled bundle
+    // Expose and write the allowed env vars on the compiled bundle
     new webpack.EnvironmentPlugin(['NODE_ENV']),
     new CopyWebpackPlugin({
       patterns: [
@@ -145,7 +140,7 @@ var options = {
           to: path.join(__dirname, 'build'),
           force: true,
           transform: function (content, path) {
-            // generates the manifest file using the package.json informations
+            // Generates the manifest file using the package.json information
             return Buffer.from(
               JSON.stringify({
                 description: process.env.npm_package_description,
@@ -185,12 +180,6 @@ var options = {
       ],
     }),
     new HtmlWebpackPlugin({
-      template: path.join(__dirname, 'src', 'pages', 'Newtab', 'index.html'),
-      filename: 'newtab.html',
-      chunks: ['newtab'],
-      cache: false,
-    }),
-    new HtmlWebpackPlugin({
       template: path.join(__dirname, 'src', 'pages', 'Options', 'index.html'),
       filename: 'options.html',
       chunks: ['options'],
@@ -217,6 +206,27 @@ var options = {
   ].filter(Boolean),
   infrastructureLogging: {
     level: 'info',
+  },
+  devServer: {
+    server: {
+      type: 'https',
+      options: {
+        key: path.resolve(__dirname, 'key.pem'),
+        cert: path.resolve(__dirname, 'cert.pem'),
+      },
+    },
+    port: 3000,
+    hot: true,
+    open: true,
+    historyApiFallback: true,
+    client: {
+      webSocketURL: {
+        protocol: 'wss',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/ws',
+      },
+    },
   },
 };
 
