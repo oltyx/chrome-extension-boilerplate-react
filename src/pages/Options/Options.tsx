@@ -17,9 +17,10 @@ const Options: React.FC<Props> = ({ title }) => {
     });
   };
 
-  // Function to save keywords to Chrome storage
   const saveKeywords = () => {
-    const keywords_array = keywords.split(',')
+    // Split by commas and newlines, trim whitespace, and filter out any empty strings
+    const keywords_array = keywords.split(/[\n,]+/).map(keyword => keyword.trim()).filter(keyword => keyword);
+
     chrome.storage.sync.set({ keywords: keywords_array }, () => {
       console.log('Keywords saved:', keywords_array);
     });

@@ -12,6 +12,7 @@ function Popup() {
       <h1>Tinder Swiping Bot</h1>
       <button onClick={() => sendMessage('start')}>Start Swiping</button>
       <button onClick={() => sendMessage('stop')}>Stop Swiping</button>
+      <button onClick={() => chrome.runtime.openOptionsPage()}>Options</button>
     </div>
   );
 }

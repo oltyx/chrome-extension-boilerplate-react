@@ -76,10 +76,16 @@ function getDescription() {
 
 function getOtherInfo() {
     try {
-        let info = document.querySelector(".Animn");
-        return stripe_html(info.innerHTML);
+        let info = document.querySelectorAll("div.Bd.D\\(ib\\).Va\\(m\\)");
+        let result = "";
+
+        info.forEach((element) => {
+            const striped = stripe_html(element.innerHTML);
+            result = result.concat(striped);
+        });
+        return result;
     } catch (e) {
-        return "";
+        console.error(e);  // It's good
     }
 }
 
@@ -93,7 +99,7 @@ const getName = () => {
 }
 
 const stripe_html = (html) => {
-    let doc = new DOMParser().parseFromString(html, 'text/html');
+    let doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
     return doc.body.textContent || "";
 }
 
@@ -125,7 +131,8 @@ const checkKeywords = () => {
     const description = getDescription().toLowerCase()
     const otherInfo = getOtherInfo().toLowerCase()
     const name = getName().toLowerCase()
-    return keywords.some(item => description.concat(otherInfo, name).includes(item.toLowerCase()));
+    const result = keywords.some(item => description.concat(otherInfo, name).includes(item.toLowerCase()));
+    return result
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
