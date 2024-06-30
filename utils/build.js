@@ -3,17 +3,22 @@ process.env.BABEL_ENV = 'production';
 process.env.NODE_ENV = 'production';
 process.env.ASSET_PATH = '/';
 
-var webpack = require('webpack'),
-  path = require('path'),
-  fs = require('fs'),
-  config = require('../webpack.config'),
-  ZipPlugin = require('zip-webpack-plugin');
+var webpack = require('webpack');
+var path = require('path');
+var fs = require('fs');
+var config = require('../webpack.config');
+var ZipPlugin = require('zip-webpack-plugin');
 
 delete config.chromeExtensionBoilerplate;
 
 config.mode = 'production';
 
-var packageInfo = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+try {
+  var packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'package.json'), 'utf-8'));
+} catch (error) {
+  console.error('Failed to read package.json:', error);
+  process.exit(1);
+}
 
 config.plugins = (config.plugins || []).concat(
   new ZipPlugin({
@@ -22,6 +27,14 @@ config.plugins = (config.plugins || []).concat(
   })
 );
 
-webpack(config, function (err) {
-  if (err) throw err;
+webpack(config, function (err, stats) {
+  if (err) {
+    console.error('Webpack encountered errors:', err);
+    process.exit(1);
+  }
+  if (stats.hasErrors()) {
+    console.error('Webpack compilation errors:', stats.toJson().errors);
+    process.exit(1);
+  }
+  console.log('Webpack compilation completed successfully');
 });

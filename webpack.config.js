@@ -1,22 +1,23 @@
-var webpack = require('webpack'),
-  path = require('path'),
-  fileSystem = require('fs-extra'),
-  env = require('./utils/env'),
-  CopyWebpackPlugin = require('copy-webpack-plugin'),
-  HtmlWebpackPlugin = require('html-webpack-plugin'),
-  TerserPlugin = require('terser-webpack-plugin');
-var { CleanWebpackPlugin } = require('clean-webpack-plugin');
-var ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
-var ReactRefreshTypeScript = require('react-refresh-typescript');
+const webpack = require('webpack');
+const path = require('path');
+const fileSystem = require('fs-extra');
+const env = require('./utils/env');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+const ReactRefreshTypeScript = require('react-refresh-typescript');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
 const ASSET_PATH = process.env.ASSET_PATH || '/';
 
-var alias = {};
+const alias = {};
 
 // Load the secrets
-var secretsPath = path.join(__dirname, 'secrets.' + env.NODE_ENV + '.js');
+const secretsPath = path.join(__dirname, 'secrets.' + env.NODE_ENV + '.js');
 
-var fileExtensions = [
+const fileExtensions = [
   'jpg',
   'jpeg',
   'png',
@@ -35,7 +36,7 @@ if (fileSystem.existsSync(secretsPath)) {
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-var options = {
+const options = {
   mode: process.env.NODE_ENV || 'development',
   entry: {
     options: path.join(__dirname, 'src', 'pages', 'Options', 'index.jsx'),
@@ -61,12 +62,8 @@ var options = {
         test: /\.(css|scss)$/,
         // In the `src` directory
         use: [
-          {
-            loader: 'style-loader',
-          },
-          {
-            loader: 'css-loader',
-          },
+          'style-loader',
+          'css-loader',
           {
             loader: 'sass-loader',
             options: {
@@ -90,14 +87,14 @@ var options = {
         exclude: /node_modules/,
         use: [
           {
-            loader: require.resolve('ts-loader'),
+            loader: 'ts-loader',
             options: {
               getCustomTransformers: () => ({
                 before: [isDevelopment && ReactRefreshTypeScript()].filter(
                   Boolean
                 ),
               }),
-              transpileOnly: isDevelopment,
+              transpileOnly: true,
             },
           },
         ],
@@ -105,14 +102,12 @@ var options = {
       {
         test: /\.(js|jsx)$/,
         use: [
+          'source-map-loader',
           {
-            loader: 'source-map-loader',
-          },
-          {
-            loader: require.resolve('babel-loader'),
+            loader: 'babel-loader',
             options: {
               plugins: [
-                isDevelopment && require.resolve('react-refresh/babel'),
+                isDevelopment && require('react-refresh/babel'),
               ].filter(Boolean),
             },
           },
@@ -133,13 +128,16 @@ var options = {
     new webpack.ProgressPlugin(),
     // Expose and write the allowed env vars on the compiled bundle
     new webpack.EnvironmentPlugin(['NODE_ENV']),
+    new ForkTsCheckerWebpackPlugin({
+      async: false,
+    }),
     new CopyWebpackPlugin({
       patterns: [
         {
           from: 'src/manifest.json',
           to: path.join(__dirname, 'build'),
           force: true,
-          transform: function (content, path) {
+          transform: function (content) {
             // Generates the manifest file using the package.json information
             return Buffer.from(
               JSON.stringify({
