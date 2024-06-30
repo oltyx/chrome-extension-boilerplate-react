@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Toast from 'react-bootstrap/Toast';
-import ToastContainer from 'react-bootstrap/ToastContainer';
 
 interface Props {
   title: string;
@@ -14,31 +11,42 @@ interface Props {
 
 const Options: React.FC<Props> = ({ title }) => {
   const [keywords, setKeywords] = useState<string>('');
-  const [showToast, setShowToast] = useState(false);
+  const [blacklist, setBlacklist] = useState<string>('');
+  const [timeout, setTimeout] = useState<number>(2000)
 
-  // Function to retrieve keywords from Chrome storage
-  const getKeywords = () => {
-    chrome.storage.sync.get(['keywords'], (result) => {
+  // Function to retrieve settings from Chrome storage
+  const getSettings = useCallback(() => {
+    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout'], (result) => {
       if (result.keywords) {
         setKeywords(Array.isArray(result.keywords) ? result.keywords.join('\n') : result.keywords);
       }
+      if (result.blacklist) {
+        setBlacklist(Array.isArray(result.blacklist) ? result.blacklist.join('\n') : result.blacklist);
+      }
+      if (result.timeout) {
+        setTimeout(result.timeout)
+      }
     });
-  };
-
-  const saveKeywords = () => {
-    // Split by newlines, trim whitespace, and filter out any empty strings
-    const keywordsArray = keywords.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
-
-    chrome.storage.sync.set({ keywords: keywordsArray }, () => {
-      console.log('Keywords saved:', keywordsArray);
-      setShowToast(true);
-    });
-  };
-
-  // Use effect to get keywords when component mounts
-  useEffect(() => {
-    getKeywords();
   }, []);
+
+  const saveSettings = useCallback(() => {
+    const keywordsArray = keywords.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
+    const blacklistArray = blacklist.split('\n').map(item => item.trim()).filter(item => item);
+
+    chrome.storage.sync.set({ keywords: keywordsArray, blacklist: blacklistArray, timeout: timeout }, () => {
+      console.log('Settings saved:', { keywords: keywordsArray, blacklist: blacklistArray, timeout: timeout });
+    });
+  }, [keywords, blacklist, timeout]);
+
+  // Use effect to get settings when component mounts
+  useEffect(() => {
+    getSettings();
+  }, [getSettings]);
+
+  // Use effect to save settings when keywords or blacklist change
+  useEffect(() => {
+    saveSettings();
+  }, [keywords, blacklist, timeout, saveSettings]);
 
   return (
     <Container className="mt-4">
@@ -48,6 +56,17 @@ const Options: React.FC<Props> = ({ title }) => {
         </Col>
       </Row>
       <Form>
+        <Form.Group as={Row} className="mb-3">
+          <Form.Label column sm={2}>Timeout (ms)</Form.Label>
+          <Col sm={10}>
+            <Form.Control
+              as="input"
+              value={timeout}
+              onChange={(e) => setTimeout(parseInt(e.target.value))}
+              placeholder="Enter timeout here..."
+            />
+          </Col>
+        </Form.Group>
         <Form.Group as={Row} className="mb-3">
           <Form.Label column sm={2}>Keywords</Form.Label>
           <Col sm={10}>
@@ -61,22 +80,18 @@ const Options: React.FC<Props> = ({ title }) => {
           </Col>
         </Form.Group>
         <Form.Group as={Row} className="mb-3">
-          <Col sm={{ span: 10, offset: 2 }}>
-            <Button variant="primary" onClick={saveKeywords}>
-              Save Keywords
-            </Button>
+          <Form.Label column sm={2}>Blacklist</Form.Label>
+          <Col sm={10}>
+            <Form.Control
+              as="textarea"
+              rows={5}
+              value={blacklist}
+              onChange={(e) => setBlacklist(e.target.value)}
+              placeholder="Enter blacklist items here..."
+            />
           </Col>
         </Form.Group>
       </Form>
-
-      <ToastContainer position="top-end" className="p-3">
-        <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>
-          <Toast.Header>
-            <strong className="me-auto">Notification</strong>
-          </Toast.Header>
-          <Toast.Body>Keywords saved successfully!</Toast.Body>
-        </Toast>
-      </ToastContainer>
     </Container>
   );
 };

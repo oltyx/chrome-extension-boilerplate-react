@@ -7,139 +7,110 @@ printLine("Using the 'printLine' function from the Print Module");
 
 let swiping = false;
 let swipeInterval;
+let keywords = [];
+let blacklist = [];
+let timeout = 1000;  // Default timeout value
 
-let keywords = ''
+const swipe = (direction) => {
+    const action = direction === 'right' ? 'Like' : 'Nope';
+    const xpath = `//button[.//span[contains(@class, 'Hidden') and text()='${action}']]`;
+    const button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
-function swipeRight() {
-    const xpath = "//button[.//span[contains(@class, 'Hidden') and text()='Like']]";
-    const likeButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
-    if (likeButton) {
+    if (button) {
         const event = new MouseEvent('click', {
             view: window,
             bubbles: true,
             cancelable: true
         });
-        likeButton.dispatchEvent(event);
-
+        button.dispatchEvent(event);
     } else {
-        console.log("Like button not found");
+        console.log(`${action} button not found`);
     }
-}
+};
 
-
-function swipeLeft() {
-    const xpath = "//button[.//span[contains(@class, 'Hidden') and text()='Nope']]";
-    const nopeButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
-    if (nopeButton) {
+const closeRandomWindows = () => {
+    const xpath = "//div[text()='No Thanks']";
+    const noThanksButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    if (noThanksButton) {
         const event = new MouseEvent('click', {
             view: window,
             bubbles: true,
             cancelable: true
         });
-        nopeButton.dispatchEvent(event);
-
-    } else {
-        console.log("Like button not found");
+        noThanksButton.dispatchEvent(event);
     }
 }
+
 const swiper = () => {
+    closeRandomWindows();
     if (checkKeywords()) {
-        swipeRight()
+        swipe('right');
     } else {
-        swipeLeft()
+        swipe('left');
     }
-}
-function startSwiping() {
+};
+
+const startSwiping = () => {
     if (!swiping) {
         swiping = true;
-        swipeInterval = setInterval(swiper, 2000);
+        printLine(`Starting swiping with timeout: ${timeout}ms`);
+        swipeInterval = setInterval(swiper, timeout);
     }
-}
+};
 
-function stopSwiping() {
+const stopSwiping = () => {
     if (swiping) {
         swiping = false;
         clearInterval(swipeInterval);
     }
-}
+};
 
-function getDescription() {
-    try {
-        let description = document.querySelector(".BreakWord");
-        return stripe_html(description.innerHTML);
-    } catch (e) {
-        return "";
-    }
-}
+const getDescription = () => {
+    const descriptionElement = document.querySelector(".BreakWord");
+    return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+};
 
-function getOtherInfo() {
-    try {
-        let info = document.querySelectorAll("div.Bd.D\\(ib\\).Va\\(m\\)");
-        let result = "";
-
-        info.forEach((element) => {
-            const striped = stripe_html(element.innerHTML);
-            result = result.concat(striped);
-        });
-        return result;
-    } catch (e) {
-        console.error(e);  // It's good
-    }
-}
+const getOtherInfo = () => {
+    const infoElements = document.querySelectorAll("div.Bd.D\\(ib\\).Va\\(m\\)");
+    return Array.from(infoElements).map(el => stripHtml(el.innerHTML)).join('');
+};
 
 const getName = () => {
-    try {
-        let name = document.querySelector('span[itemprop="name"]');
-        return name.innerHTML;
-    } catch (e) {
-        return "";
-    }
-}
+    const nameElement = document.querySelector('span[itemprop="name"]');
+    return nameElement ? nameElement.innerHTML : "";
+};
 
-const stripe_html = (html) => {
-    let doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+const stripHtml = (html) => {
+    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
     return doc.body.textContent || "";
-}
+};
 
-const getImages = () => {
-    try {
-        let imgs = document.querySelectorAll(".keen-slider__slide img[role='img']");
-        let imgs_url = [];
-        imgs.forEach(img => {
-            let style = img.style.backgroundImage;
-            let url = style.match(/url\("(.+)"\)/)[1];
-            imgs_url.push(url);
-        });
-        return imgs_url;
-    } catch (e) {
-        console.error(e);
-        return [];
-    }
-}
-
-const getKeywords = () => {
-    chrome.storage.sync.get(['keywords'], (result) => {
+const getOptions = (callback) => {
+    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout'], (result) => {
         if (result.keywords) {
             keywords = result.keywords;
         }
+        if (result.blacklist) {
+            blacklist = result.blacklist;
+        }
+        if (result.timeout) {
+            timeout = result.timeout;
+        } else {
+            timeout = 1000;  // Default timeout if not set
+        }
+        printLine(`Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}`);
+        if (callback) callback();
     });
 };
 
 const checkKeywords = () => {
-    const description = getDescription().toLowerCase()
-    const otherInfo = getOtherInfo().toLowerCase()
-    const name = getName().toLowerCase()
-    const result = keywords.some(item => description.concat(otherInfo, name).includes(item.toLowerCase()));
-    return result
-}
+    const content = (getDescription() + getOtherInfo() + getName()).toLowerCase();
+    return keywords.some(keyword => content.includes(keyword.toLowerCase())) && !blacklist.some(keyword => content.includes(keyword.toLowerCase()));
+};
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-
     if (message.action === 'start') {
-        getKeywords()
-        startSwiping();
+        getOptions(startSwiping);  // Ensure options are loaded before starting
     } else if (message.action === 'stop') {
         stopSwiping();
     }
