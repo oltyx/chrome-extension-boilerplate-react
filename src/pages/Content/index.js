@@ -10,6 +10,8 @@ let swipeInterval;
 let keywords = [];
 let blacklist = [];
 let timeout = 1000;  // Default timeout value
+let ageRange = { min: 18, max: 100 }; // Default age range
+let distanceRange = 100;  // Default maximum distance in kilometers
 
 const swipe = (direction) => {
     const action = direction === 'right' ? 'Like' : 'Nope';
@@ -45,17 +47,29 @@ const closeRandomWindows = () => {
 
 const swiper = async () => {
     closeRandomWindows();
-    console.log(getAge())
-    pressInfoButton()
-    setTimeout(() => {
+    const age = getAge();
 
-        console.log(getDistance())
-        if (checkKeywords()) {
-            swipe('right');
+
+
+    pressInfoButton();
+    setTimeout(() => {
+        const distance = getDistance();
+        if (age !== null && distance !== null) {
+            if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min) {
+                if (checkKeywords()) {
+                    swipe('right');
+                } else {
+                    swipe('left');
+                }
+            } else {
+                console.log(`Skipped profile due to age (${age}) or distance (${distance} km)`);
+                swipe('left');
+            }
         } else {
+            console.log('Age or distance not found, swiping left');
             swipe('left');
         }
-    }, 100)
+    }, 500);
 
 };
 
@@ -92,8 +106,8 @@ const getName = () => {
 
 const getAge = () => {
     const ageElement = document.querySelector('span[itemprop="age"]');
-    return ageElement ? ageElement.innerHTML : "";
-}
+    return ageElement ? parseInt(ageElement.innerHTML, 10) : null;
+};
 
 const getDistance = () => {
     // Select the SVG element based on a partial match of the d attribute
@@ -106,7 +120,7 @@ const getDistance = () => {
         if (kilometersDiv) {
             const textContent = kilometersDiv.textContent.trim();
             const kilometers = textContent.match(/\d+/)[0]; // Extract only the number
-            return kilometers;
+            return parseInt(kilometers, 10);
         } else {
             console.log('Kilometers div not found.');
             return null;
@@ -115,7 +129,7 @@ const getDistance = () => {
         console.log('SVG not found.');
         return null;
     }
-}
+};
 
 const pressInfoButton = () => {
     const button = document.querySelector('button.P\\(0\\).Trsdu\\(\\$normal\\).Sq\\(28px\\).Bdrs\\(50\\%\\).Cur\\(p\\).Ta\\(c\\).Scale\\(1\\.2\\)\\:h.CenterAlign.M\\(a\\).focus-button-style');
@@ -124,7 +138,8 @@ const pressInfoButton = () => {
     } else {
         console.log('Button not found.');
     }
-}
+};
+
 const stripHtml = (html) => {
     const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
     return doc.body.textContent || "";
@@ -145,11 +160,19 @@ const updateSettings = (result) => {
     } else {
         timeout = 1000;  // Default timeout if not set
     }
-    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}`);
+    if (result.ageRange) {
+        ageRange = result.ageRange;
+        console.log(`Updated age range: ${ageRange.min} - ${ageRange.max}`);
+    }
+    if (result.distanceRange) {
+        distanceRange = result.distanceRange;
+        console.log(`Updated maximum distance: ${distanceRange} km`);
+    }
+    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
 };
 
 const getOptions = (callback) => {
-    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout'], (result) => {
+    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange'], (result) => {
         updateSettings(result);
         if (callback) callback();
     });
@@ -178,7 +201,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         console.log('Detected changes in Chrome storage');
-        chrome.storage.sync.get(['keywords', 'blacklist', 'timeout'], (result) => {
+        chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange'], (result) => {
             updateSettings(result);
             if (swiping) {
                 console.log('Restarting swiping with updated settings');
