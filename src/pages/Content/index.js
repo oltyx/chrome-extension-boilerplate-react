@@ -66,13 +66,12 @@ const closeRandomWindows = () => {
 const swiper = async () => {
     closeRandomWindows();
     const age = getAge();
-    const numberPhotos = getPhotos().length
-    console.log(getPhotos())
+    const numberPhotos = getPhotos()
     pressInfoButton();
     setTimeout(() => {
         const distance = getDistance();
         if (age !== null && distance !== null) {
-            if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min) {
+            if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min && numberPhotos >= minPictures) {
                 if (checkKeywords()) {
                     swipe('right');
                 } else {
@@ -132,38 +131,38 @@ const getPhotos = () => {
         let spanElements = document.querySelectorAll(
             "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
         );
+        return spanElements.length
+        // // Regex pattern to extract URL from style attribute
+        // const urlPattern = /url\("([^"]+)"\)/;
 
-        // Regex pattern to extract URL from style attribute
-        const urlPattern = /url\("([^"]+)"\)/;
+        // // List to hold extracted image URLs
+        // const urls = [];
 
-        // List to hold extracted image URLs
-        const urls = [];
+        // // Iterate through each span element
+        // spanElements.forEach(spanElement => {
+        //     // Locate the nested div with the style attribute inside each span element
+        //     const nestedDiv = spanElement.querySelector("div.Bdrs\\(8px\\).Bgz\\(cv\\).Bgp\\(c\\).StretchedBox");
 
-        // Iterate through each span element
-        spanElements.forEach(spanElement => {
-            // Locate the nested div with the style attribute inside each span element
-            const nestedDiv = spanElement.querySelector("div.Bdrs\\(8px\\).Bgz\\(cv\\).Bgp\\(c\\).StretchedBox");
+        //     if (nestedDiv) {
+        //         // Extract the style attribute value from the nested div
+        //         const styleAttribute = nestedDiv.getAttribute('style');
 
-            if (nestedDiv) {
-                // Extract the style attribute value from the nested div
-                const styleAttribute = nestedDiv.getAttribute('style');
-
-                // Use regex to extract the URL from the style attribute
-                const match = urlPattern.exec(styleAttribute);
-                if (match) {
-                    const imageUrl = match[1];
-                    urls.push(imageUrl);
-                }
-            }
-            sendSpaceKey()
-            spanElements = document.querySelectorAll(
-                "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
-            );
+        //         // Use regex to extract the URL from the style attribute
+        //         const match = urlPattern.exec(styleAttribute);
+        //         if (match) {
+        //             const imageUrl = match[1];
+        //             urls.push(imageUrl);
+        //         }
+        //     }
+        //     sendSpaceKey()
+        //     spanElements = document.querySelectorAll(
+        //         "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
+        //     );
 
 
-        });
+        // });
 
-        return urls;
+        // return urls;
     } catch (error) {
         console.error(`Error processing element: ${error}`);
         return [""];
