@@ -13,9 +13,8 @@ function Popup() {
   const [toastMessage, setToastMessage] = useState('');
 
   const sendMessage = (action) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      console.log(tabs)
-      if (tabs[0]) {
+    chrome.tabs.query({ url: '*://*.tinder.com/*' }, (tabs) => {
+      if (tabs.length > 0) {
         chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
           if (chrome.runtime.lastError) {
             console.error(chrome.runtime.lastError.message);
@@ -26,8 +25,8 @@ function Popup() {
           setShowToast(true);
         });
       } else {
-        console.error('No active tab found');
-        setToastMessage('No active tab found');
+        console.error('No tab with Tinder open found');
+        setToastMessage('No tab with Tinder open found');
         setShowToast(true);
       }
     });
