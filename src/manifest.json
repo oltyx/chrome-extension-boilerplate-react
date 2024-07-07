@@ -5,10 +5,7 @@
   "options_page": "options.html",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
-    "tabs",
-    "webNavigation"
+    "activeTab"
   ],
   "host_permissions": [
     "https://tinder.com/*"
