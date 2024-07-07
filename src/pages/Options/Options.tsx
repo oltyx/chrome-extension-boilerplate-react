@@ -19,10 +19,11 @@ const Options: React.FC<Props> = ({ title }) => {
   const [minPictures, setMinPictures] = useState<number>(1);
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>('');
-
+  const [verifiedProfiles, setVerifiedProfiles] = useState<boolean>(false);
+  const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles']
   // Function to retrieve settings from Chrome storage
   const getSettings = useCallback(() => {
-    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures'], (result) => {
+    chrome.storage.sync.get(options, (result) => {
       if (result.keywords) {
         setKeywords(Array.isArray(result.keywords) ? result.keywords.join('\n') : result.keywords);
       }
@@ -40,6 +41,9 @@ const Options: React.FC<Props> = ({ title }) => {
       }
       if (result.minPictures) {
         setMinPictures(result.minPictures);
+      }
+      if (result.verifiedProfiles !== undefined) {
+        setVerifiedProfiles(result.verifiedProfiles);
       }
     });
   }, []);
@@ -71,6 +75,7 @@ const Options: React.FC<Props> = ({ title }) => {
       ageRange: ageRange,
       distanceRange: distanceRange,
       minPictures: minPictures,
+      verifiedProfiles: verifiedProfiles,
     }, () => {
       console.log('Settings saved:', {
         keywords: keywordsArray,
@@ -79,9 +84,10 @@ const Options: React.FC<Props> = ({ title }) => {
         ageRange: ageRange,
         distanceRange: distanceRange,
         minPictures: minPictures,
+        verifiedProfiles: verifiedProfiles,
       });
     });
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures]);
+  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles]);
 
   // Use effect to get settings when component mounts
   useEffect(() => {
@@ -91,7 +97,7 @@ const Options: React.FC<Props> = ({ title }) => {
   // Use effect to save settings when keywords or blacklist change
   useEffect(() => {
     saveSettings();
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, saveSettings]);
+  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, saveSettings]);
 
   const handleAgeRangeChange = (field: 'min' | 'max') => (e: ChangeEvent<HTMLInputElement>) => {
     setAgeRange({ ...ageRange, [field]: parseInt(e.target.value) });
@@ -220,6 +226,17 @@ const Options: React.FC<Props> = ({ title }) => {
               value={minPictures}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setMinPictures(parseInt(e.target.value))}
               placeholder="Enter minimum pictures here..."
+            />
+          </Col>
+        </Form.Group>
+        <Form.Group as={Row} className="mb-3">
+          <Form.Label column sm={2}>Verified Profiles Only</Form.Label>
+          <Col sm={10}>
+            <Form.Check
+              type="checkbox"
+              checked={verifiedProfiles}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setVerifiedProfiles(e.target.checked)}
+              label="Show only verified profiles"
             />
           </Col>
         </Form.Group>

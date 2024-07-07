@@ -13,6 +13,8 @@ let timeout = 1000;  // Default timeout value
 let ageRange = { min: 18, max: 100 }; // Default age range
 let distanceRange = 100;  // Default maximum distance in kilometers
 let minPictures = 1
+let verifiedProfiles = false
+const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles']
 
 const sendSpaceKey = () => {
     // Create a new KeyboardEvent
@@ -66,13 +68,17 @@ const closeRandomWindows = () => {
 const swiper = async () => {
     closeRandomWindows();
     const age = getAge();
-    const numberPhotos = getPhotos()
+    const numberPhotos = getPhotos();
+    const profileVerified = getVerified();
     pressInfoButton();
     setTimeout(() => {
         const distance = getDistance();
         if (age !== null && distance !== null) {
             if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min && numberPhotos >= minPictures) {
-                if (checkKeywords()) {
+                if (verifiedProfiles && !profileVerified) {
+                    console.log(`Skipped profile because it is not verified`);
+                    swipe('left');
+                } else if (checkKeywords()) {
                     swipe('right');
                 } else {
                     swipe('left');
@@ -86,8 +92,8 @@ const swiper = async () => {
             swipe('left');
         }
     }, 500);
-
 };
+
 
 const startSwiping = () => {
     if (!swiping) {
@@ -122,7 +128,7 @@ const getName = () => {
 
 const getAge = () => {
     const ageElement = document.querySelector('span[itemprop="age"]');
-    return ageElement ? parseInt(ageElement.innerHTML, 10) : null;
+    return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
 };
 
 const getPhotos = () => {
@@ -169,6 +175,10 @@ const getPhotos = () => {
     }
 };
 
+const getVerified = () => {
+    const element = document.querySelector('.D\\(ib\\).Lh\\(0\\).As\\(c\\)');
+    return element ? true : false;
+}
 const getDistance = () => {
     // Select the SVG element based on a partial match of the d attribute
     const svg = document.querySelector('svg.Va\\(m\\).Sq\\(16px\\) path[d*="M11.436 21.17l-.185-.165"]');
@@ -232,11 +242,15 @@ const updateSettings = (result) => {
         minPictures = result.minPictures
         console.log(`Updated minimum pictures: ${minPictures}`);
     }
+    if (result.verifiedProfiles) {
+        verifiedProfiles = result.verifiedProfiles
+        console.log(`Show only verified profiles: ${verifiedProfiles}`);
+    }
     printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
 };
 
 const getOptions = (callback) => {
-    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures'], (result) => {
+    chrome.storage.sync.get(options, (result) => {
         updateSettings(result);
         if (callback) callback();
     });
@@ -265,7 +279,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         console.log('Detected changes in Chrome storage');
-        chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures'], (result) => {
+        chrome.storage.sync.get(options, (result) => {
             updateSettings(result);
             if (swiping) {
                 console.log('Restarting swiping with updated settings');
