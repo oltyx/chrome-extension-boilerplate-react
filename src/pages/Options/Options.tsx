@@ -16,12 +16,13 @@ const Options: React.FC<Props> = ({ title }) => {
   const [timeout, setTimeout] = useState<number>(2000);
   const [ageRange, setAgeRange] = useState<{ min: number; max: number }>({ min: 18, max: 100 });
   const [distanceRange, setDistanceRange] = useState<{ min: number; max: number }>({ min: 0, max: 100 });
+  const [minPictures, setMinPictures] = useState<number>(1);
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>('');
 
   // Function to retrieve settings from Chrome storage
   const getSettings = useCallback(() => {
-    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange'], (result) => {
+    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures'], (result) => {
       if (result.keywords) {
         setKeywords(Array.isArray(result.keywords) ? result.keywords.join('\n') : result.keywords);
       }
@@ -37,6 +38,9 @@ const Options: React.FC<Props> = ({ title }) => {
       if (result.distanceRange) {
         setDistanceRange(result.distanceRange);
       }
+      if (result.minPictures) {
+        setMinPictures(result.minPictures);
+      }
     });
   }, []);
 
@@ -51,6 +55,11 @@ const Options: React.FC<Props> = ({ title }) => {
       setShowToast(true);
       return;
     }
+    if (minPictures < 1) {
+      setToastMessage('Minimum pictures cannot be less than 1.');
+      setShowToast(true);
+      return;
+    }
 
     const keywordsArray = keywords.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
     const blacklistArray = blacklist.split('\n').map(item => item.trim()).filter(item => item);
@@ -61,6 +70,7 @@ const Options: React.FC<Props> = ({ title }) => {
       timeout: timeout,
       ageRange: ageRange,
       distanceRange: distanceRange,
+      minPictures: minPictures,
     }, () => {
       console.log('Settings saved:', {
         keywords: keywordsArray,
@@ -68,9 +78,10 @@ const Options: React.FC<Props> = ({ title }) => {
         timeout: timeout,
         ageRange: ageRange,
         distanceRange: distanceRange,
+        minPictures: minPictures,
       });
     });
-  }, [keywords, blacklist, timeout, ageRange, distanceRange]);
+  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures]);
 
   // Use effect to get settings when component mounts
   useEffect(() => {
@@ -80,7 +91,7 @@ const Options: React.FC<Props> = ({ title }) => {
   // Use effect to save settings when keywords or blacklist change
   useEffect(() => {
     saveSettings();
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, saveSettings]);
+  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, saveSettings]);
 
   const handleAgeRangeChange = (field: 'min' | 'max') => (e: ChangeEvent<HTMLInputElement>) => {
     setAgeRange({ ...ageRange, [field]: parseInt(e.target.value) });
@@ -197,6 +208,18 @@ const Options: React.FC<Props> = ({ title }) => {
               onChange={(e: ChangeEvent<HTMLInputElement>) => setDistanceRange({ ...distanceRange, max: parseInt(e.target.value) })}
               min={0}
               max={1000}
+            />
+          </Col>
+        </Form.Group>
+        <Form.Group as={Row} className="mb-3">
+          <Form.Label column sm={2}>Minimum Pictures</Form.Label>
+          <Col sm={10}>
+            <Form.Control
+              as="input"
+              type="number"
+              value={minPictures}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setMinPictures(parseInt(e.target.value))}
+              placeholder="Enter minimum pictures here..."
             />
           </Col>
         </Form.Group>

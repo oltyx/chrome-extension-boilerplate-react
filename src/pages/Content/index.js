@@ -12,6 +12,24 @@ let blacklist = [];
 let timeout = 1000;  // Default timeout value
 let ageRange = { min: 18, max: 100 }; // Default age range
 let distanceRange = 100;  // Default maximum distance in kilometers
+let minPictures = 1
+
+const sendSpaceKey = () => {
+    // Create a new KeyboardEvent
+    const event = new KeyboardEvent('keydown', {
+        key: ' ', // Space key
+        code: 'Space',
+        keyCode: 32, // keyCode for space
+        charCode: 32, // charCode for space
+        which: 32, // 'which' is also set to 32 for space
+        bubbles: true,
+        cancelable: true
+    });
+
+    // Dispatch the event to the document body
+    document.body.dispatchEvent(event);
+    console.log('Space key pressed');
+};
 
 const swipe = (direction) => {
     const action = direction === 'right' ? 'Like' : 'Nope';
@@ -48,9 +66,8 @@ const closeRandomWindows = () => {
 const swiper = async () => {
     closeRandomWindows();
     const age = getAge();
-
-
-
+    const numberPhotos = getPhotos().length
+    console.log(getPhotos())
     pressInfoButton();
     setTimeout(() => {
         const distance = getDistance();
@@ -62,7 +79,7 @@ const swiper = async () => {
                     swipe('left');
                 }
             } else {
-                console.log(`Skipped profile due to age (${age}) or distance (${distance} km)`);
+                console.log(`Skipped profile due to age (${age}), distance (${distance}) or minimum amount of pictures (${numberPhotos})`);
                 swipe('left');
             }
         } else {
@@ -107,6 +124,50 @@ const getName = () => {
 const getAge = () => {
     const ageElement = document.querySelector('span[itemprop="age"]');
     return ageElement ? parseInt(ageElement.innerHTML, 10) : null;
+};
+
+const getPhotos = () => {
+    try {
+        // Select all span elements with the specified classes
+        let spanElements = document.querySelectorAll(
+            "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
+        );
+
+        // Regex pattern to extract URL from style attribute
+        const urlPattern = /url\("([^"]+)"\)/;
+
+        // List to hold extracted image URLs
+        const urls = [];
+
+        // Iterate through each span element
+        spanElements.forEach(spanElement => {
+            // Locate the nested div with the style attribute inside each span element
+            const nestedDiv = spanElement.querySelector("div.Bdrs\\(8px\\).Bgz\\(cv\\).Bgp\\(c\\).StretchedBox");
+
+            if (nestedDiv) {
+                // Extract the style attribute value from the nested div
+                const styleAttribute = nestedDiv.getAttribute('style');
+
+                // Use regex to extract the URL from the style attribute
+                const match = urlPattern.exec(styleAttribute);
+                if (match) {
+                    const imageUrl = match[1];
+                    urls.push(imageUrl);
+                }
+            }
+            sendSpaceKey()
+            spanElements = document.querySelectorAll(
+                "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
+            );
+
+
+        });
+
+        return urls;
+    } catch (error) {
+        console.error(`Error processing element: ${error}`);
+        return [""];
+    }
 };
 
 const getDistance = () => {
@@ -166,13 +227,17 @@ const updateSettings = (result) => {
     }
     if (result.distanceRange) {
         distanceRange = result.distanceRange;
-        console.log(`Updated maximum distance: ${distanceRange} km`);
+        console.log(`Updated distance range: ${distanceRange.min} - ${distanceRange.max}`);
+    }
+    if (result.minPictures) {
+        minPictures = result.minPictures
+        console.log(`Updated minimum pictures: ${minPictures}`);
     }
     printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
 };
 
 const getOptions = (callback) => {
-    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange'], (result) => {
+    chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures'], (result) => {
         updateSettings(result);
         if (callback) callback();
     });
@@ -201,7 +266,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         console.log('Detected changes in Chrome storage');
-        chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange'], (result) => {
+        chrome.storage.sync.get(['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures'], (result) => {
             updateSettings(result);
             if (swiping) {
                 console.log('Restarting swiping with updated settings');
