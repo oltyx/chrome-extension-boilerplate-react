@@ -20,7 +20,9 @@ const Options: React.FC<Props> = ({ title }) => {
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [verifiedProfiles, setVerifiedProfiles] = useState<boolean>(false);
-  const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles']
+  const [skipEmptyDescriptions, setSkipEmptyDescriptions] = useState<boolean>(false);
+
+  const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescriptions'];
   // Function to retrieve settings from Chrome storage
   const getSettings = useCallback(() => {
     chrome.storage.sync.get(options, (result) => {
@@ -44,6 +46,9 @@ const Options: React.FC<Props> = ({ title }) => {
       }
       if (result.verifiedProfiles !== undefined) {
         setVerifiedProfiles(result.verifiedProfiles);
+      }
+      if (result.skipEmptyDescriptions !== undefined) {
+        setSkipEmptyDescriptions(result.skipEmptyDescriptions);
       }
     });
   }, []);
@@ -76,6 +81,7 @@ const Options: React.FC<Props> = ({ title }) => {
       distanceRange: distanceRange,
       minPictures: minPictures,
       verifiedProfiles: verifiedProfiles,
+      skipEmptyDescriptions: skipEmptyDescriptions,
     }, () => {
       console.log('Settings saved:', {
         keywords: keywordsArray,
@@ -85,9 +91,10 @@ const Options: React.FC<Props> = ({ title }) => {
         distanceRange: distanceRange,
         minPictures: minPictures,
         verifiedProfiles: verifiedProfiles,
+        skipEmptyDescriptions: skipEmptyDescriptions,
       });
     });
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles]);
+  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions]);
 
   // Use effect to get settings when component mounts
   useEffect(() => {
@@ -240,6 +247,17 @@ const Options: React.FC<Props> = ({ title }) => {
             />
           </Col>
         </Form.Group>
+        <Form.Group as={Row} className="mb-3">
+          <Form.Label column sm={2}>Skip Empty Descriptions</Form.Label>
+          <Col sm={10}>
+            <Form.Check
+              type="checkbox"
+              checked={skipEmptyDescriptions}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setSkipEmptyDescriptions(e.target.checked)}
+              label="Skip profiles with empty descriptions"
+            />
+          </Col>
+        </Form.Group>;
       </Form>
       <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>
         <Toast.Body>{toastMessage}</Toast.Body>

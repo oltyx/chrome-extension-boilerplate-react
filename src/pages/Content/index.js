@@ -14,7 +14,8 @@ let ageRange = { min: 18, max: 100 }; // Default age range
 let distanceRange = 100;  // Default maximum distance in kilometers
 let minPictures = 1
 let verifiedProfiles = false
-const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles']
+let skipEmptyDescription = false
+const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription']
 
 const sendSpaceKey = () => {
     // Create a new KeyboardEvent
@@ -70,6 +71,7 @@ const swiper = async () => {
     const age = getAge();
     const numberPhotos = getPhotos();
     const profileVerified = getVerified();
+    const description = getDescription(); // Fetch the description
     pressInfoButton();
     setTimeout(() => {
         const distance = getDistance();
@@ -77,6 +79,9 @@ const swiper = async () => {
             if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min && numberPhotos >= minPictures) {
                 if (verifiedProfiles && !profileVerified) {
                     console.log(`Skipped profile because it is not verified`);
+                    swipe('left');
+                } else if (skipEmptyDescription && description.trim() === "") {
+                    console.log('Skipped profile due to empty description');
                     swipe('left');
                 } else if (checkKeywords()) {
                     swipe('right');
@@ -216,6 +221,10 @@ const stripHtml = (html) => {
 };
 
 const updateSettings = (result) => {
+    if (result.skipEmptyDescription !== undefined) {
+        skipEmptyDescription = result.skipEmptyDescription;
+        console.log(`Skip empty descriptions: ${skipEmptyDescription}`);
+    }
     if (result.keywords) {
         keywords = result.keywords;
         console.log(`Updated keywords: ${keywords}`);
