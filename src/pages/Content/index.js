@@ -101,7 +101,7 @@ const swiper = async () => {
     }, 500);
 };
 
-const startSwiping = async () => {
+const startSwiping = () => {
     if (!swiping) {
         swiping = true;
         console.log(`Starting swiping with timeout: ${timeout}ms`);
@@ -225,7 +225,7 @@ const updateSettings = (result) => {
         instantLike = result.instantLike;
         console.log(`Instant like keywords: ${instantLike}`);
     }
-    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`, 'Instant like keywords:', instantLike);
+    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
 };
 
 const getOptions = (callback) => {
@@ -245,7 +245,7 @@ const checkKeywords = () => {
 
 const checkKeywordsInstantLike = () => {
     const content = (getDescription() + getOtherInfo() + getName()).toLowerCase();
-    const keywordMatch = instantLike.some(keyword => content.includes(keyword.toLowerCase()));
+    const keywordMatch = instantLike.some(keyword => content.includes(instantLike.toLowerCase()));
     return keywordMatch;
 };
 

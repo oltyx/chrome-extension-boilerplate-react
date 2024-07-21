@@ -8,7 +8,6 @@ import Toast from 'react-bootstrap/Toast';
 import { checkSubscription } from '../../utils/subscription'; // Updated import path
 import debounce from 'lodash/debounce';
 
-
 interface Props {
   title: string;
 }
@@ -92,18 +91,41 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
       const keywordsArray = keywords.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
       const blacklistArray = blacklist.split('\n').map(item => item.trim()).filter(item => item);
       const instantLikeArray = instantLike.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
-      chrome.storage.sync.set({
-        keywords: keywordsArray,
-        blacklist: blacklistArray,
-        timeout: timeout,
-        ageRange: ageRange,
-        distanceRange: distanceRange,
-        minPictures: minPictures,
-        verifiedProfiles: verifiedProfiles,
-        skipEmptyDescriptions: skipEmptyDescriptions,
-        instantLike: instantLikeArray,
-      }, () => {
-        console.log('Settings saved:', {
+
+      if (!hasSubscription) {
+        if (keywordsArray.length > 20) {
+          setToastMessage('Non-subscribed users can only have up to 20 keywords.');
+          setShowToast(true);
+        } else if (blacklistArray.length > 20) {
+          setToastMessage('Non-subscribed users can only have up to 20 blacklist items.');
+          setShowToast(true);
+        } else {
+          chrome.storage.sync.set({
+            keywords: keywordsArray,
+            blacklist: blacklistArray,
+            timeout: timeout,
+            ageRange: ageRange,
+            distanceRange: distanceRange,
+            minPictures: minPictures,
+            verifiedProfiles: verifiedProfiles,
+            skipEmptyDescriptions: skipEmptyDescriptions,
+            instantLike: instantLikeArray,
+          }, () => {
+            console.log('Settings saved:', {
+              keywords: keywordsArray,
+              blacklist: blacklistArray,
+              timeout: timeout,
+              ageRange: ageRange,
+              distanceRange: distanceRange,
+              minPictures: minPictures,
+              verifiedProfiles: verifiedProfiles,
+              skipEmptyDescriptions: skipEmptyDescriptions,
+              instantLike: instantLikeArray
+            });
+          });
+        }
+      } else {
+        chrome.storage.sync.set({
           keywords: keywordsArray,
           blacklist: blacklistArray,
           timeout: timeout,
@@ -112,11 +134,23 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
           minPictures: minPictures,
           verifiedProfiles: verifiedProfiles,
           skipEmptyDescriptions: skipEmptyDescriptions,
-          instantLike: instantLikeArray
+          instantLike: instantLikeArray,
+        }, () => {
+          console.log('Settings saved:', {
+            keywords: keywordsArray,
+            blacklist: blacklistArray,
+            timeout: timeout,
+            ageRange: ageRange,
+            distanceRange: distanceRange,
+            minPictures: minPictures,
+            verifiedProfiles: verifiedProfiles,
+            skipEmptyDescriptions: skipEmptyDescriptions,
+            instantLike: instantLikeArray
+          });
         });
-      });
+      }
     }, 1000),
-    [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike]
+    [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, hasSubscription]
   );
 
   useEffect(() => {
