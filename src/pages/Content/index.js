@@ -1,24 +1,26 @@
 import { printLine } from './modules/print';
+import { checkSubscription } from '../../utils/subscription';
 
 console.log('Content script works!');
 console.log('Must reload extension for modifications to take effect.');
 
 printLine("Using the 'printLine' function from the Print Module");
 
+let subscription = null;
 let swiping = false;
 let swipeInterval;
+let instantLike = [];
 let keywords = [];
 let blacklist = [];
 let timeout = 1000;  // Default timeout value
 let ageRange = { min: 18, max: 100 }; // Default age range
 let distanceRange = 100;  // Default maximum distance in kilometers
-let minPictures = 1
-let verifiedProfiles = false
-let skipEmptyDescription = false
-const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription']
+let minPictures = 1;
+let verifiedProfiles = false;
+let skipEmptyDescription = false;
+const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription', 'instantLike'];
 
 const sendSpaceKey = () => {
-    // Create a new KeyboardEvent
     const event = new KeyboardEvent('keydown', {
         key: ' ', // Space key
         code: 'Space',
@@ -28,14 +30,12 @@ const sendSpaceKey = () => {
         bubbles: true,
         cancelable: true
     });
-
-    // Dispatch the event to the document body
     document.body.dispatchEvent(event);
     console.log('Space key pressed');
 };
 
 const swipe = (direction) => {
-    const action = direction === 'right' ? 'Like' : 'Nope';
+    const action = direction === 'right' ? 'Like' : direction === 'instant' ? 'Super Like' : 'Nope';
     const xpath = `//button[.//span[contains(@class, 'Hidden') and text()='${action}']]`;
     const button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
@@ -83,6 +83,8 @@ const swiper = async () => {
                 } else if (skipEmptyDescription && description.trim() === "") {
                     console.log('Skipped profile due to empty description');
                     swipe('left');
+                } else if (subscription && checkKeywordsInstantLike()) {
+                    swipe('instant');
                 } else if (checkKeywords()) {
                     swipe('right');
                 } else {
@@ -99,8 +101,7 @@ const swiper = async () => {
     }, 500);
 };
 
-
-const startSwiping = () => {
+const startSwiping = async () => {
     if (!swiping) {
         swiping = true;
         console.log(`Starting swiping with timeout: ${timeout}ms`);
@@ -138,42 +139,10 @@ const getAge = () => {
 
 const getPhotos = () => {
     try {
-        // Select all span elements with the specified classes
         let spanElements = document.querySelectorAll(
             "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
         );
-        return spanElements.length
-        // // Regex pattern to extract URL from style attribute
-        // const urlPattern = /url\("([^"]+)"\)/;
-
-        // // List to hold extracted image URLs
-        // const urls = [];
-
-        // // Iterate through each span element
-        // spanElements.forEach(spanElement => {
-        //     // Locate the nested div with the style attribute inside each span element
-        //     const nestedDiv = spanElement.querySelector("div.Bdrs\\(8px\\).Bgz\\(cv\\).Bgp\\(c\\).StretchedBox");
-
-        //     if (nestedDiv) {
-        //         // Extract the style attribute value from the nested div
-        //         const styleAttribute = nestedDiv.getAttribute('style');
-
-        //         // Use regex to extract the URL from the style attribute
-        //         const match = urlPattern.exec(styleAttribute);
-        //         if (match) {
-        //             const imageUrl = match[1];
-        //             urls.push(imageUrl);
-        //         }
-        //     }
-        //     sendSpaceKey()
-        //     spanElements = document.querySelectorAll(
-        //         "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
-        //     );
-
-
-        // });
-
-        // return urls;
+        return spanElements.length;
     } catch (error) {
         console.error(`Error processing element: ${error}`);
         return [""];
@@ -184,13 +153,10 @@ const getVerified = () => {
     const element = document.querySelector('.D\\(ib\\).Lh\\(0\\).As\\(c\\)');
     return element ? true : false;
 }
-const getDistance = () => {
-    // Select the SVG element based on a partial match of the d attribute
-    const svg = document.querySelector('svg.Va\\(m\\).Sq\\(16px\\) path[d*="M11.436 21.17l-.185-.165"]');
 
-    // Check if the SVG element is found
+const getDistance = () => {
+    const svg = document.querySelector('svg.Va\\(m\\).Sq\\(16px\\) path[d*="M11.436 21.17l-.185-.165"]');
     if (svg) {
-        // Find the closest div with the class 'Row' and then find the div with the class 'Us(t) Va(m) D(ib) NetWidth(100%,20px) C($c-ds-text-secondary)'
         const kilometersDiv = svg.closest('div.Row').querySelector('div.Us\\(t\\).Va\\(m\\).D\\(ib\\).NetWidth\\(100\\%\\,20px\\).C\\(\\$c-ds-text-secondary\\)');
         if (kilometersDiv) {
             const textContent = kilometersDiv.textContent.trim();
@@ -248,14 +214,18 @@ const updateSettings = (result) => {
         console.log(`Updated distance range: ${distanceRange.min} - ${distanceRange.max}`);
     }
     if (result.minPictures) {
-        minPictures = result.minPictures
+        minPictures = result.minPictures;
         console.log(`Updated minimum pictures: ${minPictures}`);
     }
     if (result.verifiedProfiles) {
-        verifiedProfiles = result.verifiedProfiles
+        verifiedProfiles = result.verifiedProfiles;
         console.log(`Show only verified profiles: ${verifiedProfiles}`);
     }
-    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
+    if (result.instantLike) {
+        instantLike = result.instantLike;
+        console.log(`Instant like keywords: ${instantLike}`);
+    }
+    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`, 'Instant like keywords:', instantLike);
 };
 
 const getOptions = (callback) => {
@@ -273,10 +243,29 @@ const checkKeywords = () => {
     return keywordMatch && !blacklistMatch;
 };
 
+const checkKeywordsInstantLike = () => {
+    const content = (getDescription() + getOtherInfo() + getName()).toLowerCase();
+    const keywordMatch = instantLike.some(keyword => content.includes(keyword.toLowerCase()));
+    return keywordMatch;
+};
+
+const getSubscription = async () => {
+    try {
+        const subscriptionResult = await checkSubscription();
+        subscription = subscriptionResult;
+        console.log('Subscription:', subscriptionResult);
+    } catch (error) {
+        console.error('Error checking subscription:', error);
+    }
+};
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'start') {
-        console.log('Received start message');
-        getOptions(startSwiping);  // Ensure options are loaded before starting
+        getSubscription().then(() => {
+            console.log(subscription);
+            console.log('Received start message');
+            getOptions(startSwiping);  // Ensure options are loaded before starting
+        });
     } else if (message.action === 'stop') {
         console.log('Received stop message');
         stopSwiping();

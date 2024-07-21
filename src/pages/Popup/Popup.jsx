@@ -13,23 +13,35 @@ function Popup() {
   const [toastMessage, setToastMessage] = useState('');
 
   const sendMessage = (action) => {
-    chrome.tabs.query({ url: '*://*.tinder.com/*' }, (tabs) => {
-      if (tabs.length > 0) {
-        chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
-          if (chrome.runtime.lastError) {
-            console.error(chrome.runtime.lastError.message);
-            setToastMessage(`Error: ${chrome.runtime.lastError.message}`);
-          } else {
-            setToastMessage(`Action ${action} sent: ${response.status}`);
-          }
+    if (!['start', 'stop', 'login'].includes(action)) {
+      console.error(`Invalid action: ${action}`);
+      setToastMessage(`Invalid action: ${action}`);
+      setShowToast(true);
+      return;
+    }
+    if (action === 'login') {
+      chrome.tabs.create({ url: 'login.html' });
+      return;
+    } else {
+      chrome.tabs.query({ url: '*://*.tinder.com/*' }, (tabs) => {
+        if (tabs.length > 0) {
+          chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError.message);
+              setToastMessage(`Error: ${chrome.runtime.lastError.message}`);
+            } else {
+              setToastMessage(`Action ${action} sent: ${response.status}`);
+            }
+            setShowToast(true);
+          });
+        } else {
+          console.error('No tab with Tinder open found');
+          setToastMessage('No tab with Tinder open found');
           setShowToast(true);
-        });
-      } else {
-        console.error('No tab with Tinder open found');
-        setToastMessage('No tab with Tinder open found');
-        setShowToast(true);
-      }
-    });
+        }
+      });
+    }
+
   };
 
   return (
@@ -37,10 +49,11 @@ function Popup() {
       <Row className="justify-content-md-center">
         <Col md={6}>
           <Stack gap={3} className="text-center">
-            <h1 className="mb-4">Tinder Swiping Bot</h1>
+            <h1 className="mb-4">QuickSwiper</h1>
             <Button variant="success" size="lg" onClick={() => sendMessage('start')}>Start Swiping</Button>
             <Button variant="danger" size="lg" onClick={() => sendMessage('stop')}>Stop Swiping</Button>
             <Button variant="primary" size="lg" onClick={() => chrome.runtime.openOptionsPage()}>Options</Button>
+            <Button variant="info" size="lg" onClick={() => sendMessage('login')}>Login/register</Button>
           </Stack>
         </Col>
       </Row>

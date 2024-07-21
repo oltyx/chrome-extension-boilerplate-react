@@ -1,19 +1,23 @@
-import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, ChangeEvent, ReactElement } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Toast from 'react-bootstrap/Toast';
+import { checkSubscription } from '../../utils/subscription'; // Updated import path
+import debounce from 'lodash/debounce';
+
 
 interface Props {
   title: string;
 }
 
-const Options: React.FC<Props> = ({ title }) => {
+const Options: React.FC<Props> = ({ title }): ReactElement => {
   const [keywords, setKeywords] = useState<string>('');
   const [blacklist, setBlacklist] = useState<string>('');
-  const [timeout, setTimeout] = useState<number>(2000);
+  const [instantLike, setInstantLike] = useState<string>('');
+  const [timeout, setTimeoutValue] = useState<number>(2000);
   const [ageRange, setAgeRange] = useState<{ min: number; max: number }>({ min: 18, max: 100 });
   const [distanceRange, setDistanceRange] = useState<{ min: number; max: number }>({ min: 0, max: 100 });
   const [minPictures, setMinPictures] = useState<number>(1);
@@ -22,9 +26,20 @@ const Options: React.FC<Props> = ({ title }) => {
   const [verifiedProfiles, setVerifiedProfiles] = useState<boolean>(false);
   const [skipEmptyDescriptions, setSkipEmptyDescriptions] = useState<boolean>(false);
 
-  const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescriptions'];
-  // Function to retrieve settings from Chrome storage
-  const getSettings = useCallback(() => {
+  const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescriptions', 'instantLike'];
+
+  const [hasSubscription, setHasSubscription] = useState(false);
+
+  useEffect(() => {
+    // Retrieve settings and token from Chrome storage on component mount
+    chrome.storage.local.get(['token'], (result) => {
+      if (result.token) {
+        checkSubscription().then((subscription) => {
+          setHasSubscription(!!subscription);
+        });
+      }
+    });
+
     chrome.storage.sync.get(options, (result) => {
       if (result.keywords) {
         setKeywords(Array.isArray(result.keywords) ? result.keywords.join('\n') : result.keywords);
@@ -33,7 +48,7 @@ const Options: React.FC<Props> = ({ title }) => {
         setBlacklist(Array.isArray(result.blacklist) ? result.blacklist.join('\n') : result.blacklist);
       }
       if (result.timeout) {
-        setTimeout(result.timeout);
+        setTimeoutValue(result.timeout);
       }
       if (result.ageRange) {
         setAgeRange(result.ageRange);
@@ -50,40 +65,34 @@ const Options: React.FC<Props> = ({ title }) => {
       if (result.skipEmptyDescriptions !== undefined) {
         setSkipEmptyDescriptions(result.skipEmptyDescriptions);
       }
+      if (result.instantLike) {
+        setInstantLike(Array.isArray(result.instantLike) ? result.instantLike.join('\n') : result.instantLike);
+      }
     });
   }, []);
 
-  const saveSettings = useCallback(() => {
-    if (ageRange.min > ageRange.max) {
-      setToastMessage('Minimum age cannot be greater than maximum age.');
-      setShowToast(true);
-      return;
-    }
-    if (distanceRange.min > distanceRange.max) {
-      setToastMessage('Minimum distance cannot be greater than maximum distance.');
-      setShowToast(true);
-      return;
-    }
-    if (minPictures < 1) {
-      setToastMessage('Minimum pictures cannot be less than 1.');
-      setShowToast(true);
-      return;
-    }
+  const debouncedSaveSettings = useCallback(
+    debounce(() => {
+      if (ageRange.min > ageRange.max) {
+        setToastMessage('Minimum age cannot be greater than maximum age.');
+        setShowToast(true);
+        return;
+      }
+      if (distanceRange.min > distanceRange.max) {
+        setToastMessage('Minimum distance cannot be greater than maximum distance.');
+        setShowToast(true);
+        return;
+      }
+      if (minPictures < 1) {
+        setToastMessage('Minimum pictures cannot be less than 1.');
+        setShowToast(true);
+        return;
+      }
 
-    const keywordsArray = keywords.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
-    const blacklistArray = blacklist.split('\n').map(item => item.trim()).filter(item => item);
-
-    chrome.storage.sync.set({
-      keywords: keywordsArray,
-      blacklist: blacklistArray,
-      timeout: timeout,
-      ageRange: ageRange,
-      distanceRange: distanceRange,
-      minPictures: minPictures,
-      verifiedProfiles: verifiedProfiles,
-      skipEmptyDescriptions: skipEmptyDescriptions,
-    }, () => {
-      console.log('Settings saved:', {
+      const keywordsArray = keywords.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
+      const blacklistArray = blacklist.split('\n').map(item => item.trim()).filter(item => item);
+      const instantLikeArray = instantLike.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
+      chrome.storage.sync.set({
         keywords: keywordsArray,
         blacklist: blacklistArray,
         timeout: timeout,
@@ -92,19 +101,30 @@ const Options: React.FC<Props> = ({ title }) => {
         minPictures: minPictures,
         verifiedProfiles: verifiedProfiles,
         skipEmptyDescriptions: skipEmptyDescriptions,
+        instantLike: instantLikeArray,
+      }, () => {
+        console.log('Settings saved:', {
+          keywords: keywordsArray,
+          blacklist: blacklistArray,
+          timeout: timeout,
+          ageRange: ageRange,
+          distanceRange: distanceRange,
+          minPictures: minPictures,
+          verifiedProfiles: verifiedProfiles,
+          skipEmptyDescriptions: skipEmptyDescriptions,
+          instantLike: instantLikeArray
+        });
       });
-    });
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions]);
+    }, 1000),
+    [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike]
+  );
 
-  // Use effect to get settings when component mounts
   useEffect(() => {
-    getSettings();
-  }, [getSettings]);
-
-  // Use effect to save settings when keywords or blacklist change
-  useEffect(() => {
-    saveSettings();
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, saveSettings]);
+    debouncedSaveSettings();
+    return () => {
+      debouncedSaveSettings.cancel();
+    };
+  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, debouncedSaveSettings]);
 
   const handleAgeRangeChange = (field: 'min' | 'max') => (e: ChangeEvent<HTMLInputElement>) => {
     setAgeRange({ ...ageRange, [field]: parseInt(e.target.value) });
@@ -129,7 +149,7 @@ const Options: React.FC<Props> = ({ title }) => {
               as="input"
               type="number"
               value={timeout}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeout(parseInt(e.target.value))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeoutValue(parseInt(e.target.value))}
               placeholder="Enter timeout here..."
             />
           </Col>
@@ -257,7 +277,21 @@ const Options: React.FC<Props> = ({ title }) => {
               label="Skip profiles with empty descriptions"
             />
           </Col>
-        </Form.Group>;
+        </Form.Group>
+        {hasSubscription && (
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={2}>Instant Like Keywords</Form.Label>
+            <Col sm={10}>
+              <Form.Control
+                as="textarea"
+                rows={5}
+                value={instantLike}
+                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setInstantLike(e.target.value)}
+                placeholder="Enter instant like keywords here..."
+              />
+            </Col>
+          </Form.Group>
+        )}
       </Form>
       <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>
         <Toast.Body>{toastMessage}</Toast.Body>
