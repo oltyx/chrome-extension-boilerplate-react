@@ -13,12 +13,31 @@ let instantLike = [];
 let keywords = [];
 let blacklist = [];
 let timeout = 1000;  // Default timeout value
+let timeoutRange = { min: 1000, max: 5000 };  // Default timeout range for subscribed users
 let ageRange = { min: 18, max: 100 }; // Default age range
-let distanceRange = 100;  // Default maximum distance in kilometers
+let distanceRange = { min: 0, max: 100 };  // Default distance range
 let minPictures = 1;
 let verifiedProfiles = false;
 let skipEmptyDescription = false;
-const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription', 'instantLike'];
+let rightSwipes = 0;
+let leftSwipes = 0;
+let instantLikes = 0;
+
+const options = ['keywords', 'blacklist', 'timeout', 'timeoutRange', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription', 'instantLike'];
+
+const countSwipes = (direction) => {
+    if (subscription) {
+        if (direction === 'right') {
+            rightSwipes++;
+        } else if (direction === 'left') {
+            leftSwipes++;
+        } else if (direction === 'instant') {
+            instantLikes++;
+        }
+        console.log(`Right swipes: ${rightSwipes}, Left swipes: ${leftSwipes}, Instant likes: ${instantLikes}`);
+        chrome.storage.local.set({ rightSwipes, leftSwipes, instantLikes });
+    }
+};
 
 const sendSpaceKey = () => {
     const event = new KeyboardEvent('keydown', {
@@ -80,32 +99,39 @@ const swiper = async () => {
                 if (verifiedProfiles && !profileVerified) {
                     console.log(`Skipped profile because it is not verified`);
                     swipe('left');
+                    countSwipes('left');
                 } else if (skipEmptyDescription && description.trim() === "") {
                     console.log('Skipped profile due to empty description');
                     swipe('left');
+                    countSwipes('left');
                 } else if (subscription && checkKeywordsInstantLike()) {
                     swipe('instant');
-                } else if (checkKeywords()) {
+                    countSwipes('instant');
+                } else if (checkKeywords() || keywords.length === 0) {
                     swipe('right');
+                    countSwipes('right');
                 } else {
                     swipe('left');
+                    countSwipes('left');
                 }
             } else {
                 console.log(`Skipped profile due to age (${age}), distance (${distance}) or minimum amount of pictures (${numberPhotos})`);
                 swipe('left');
+                countSwipes('left');
             }
         } else {
             console.log('Age or distance not found, swiping left');
             swipe('left');
+            countSwipes('left');
         }
-    }, 500);
+    }, subscription ? Math.floor(Math.random() * (timeoutRange.max - timeoutRange.min + 1)) + timeoutRange.min : timeout);
 };
 
 const startSwiping = () => {
     if (!swiping) {
         swiping = true;
         console.log(`Starting swiping with timeout: ${timeout}ms`);
-        swipeInterval = setInterval(swiper, timeout);
+        swipeInterval = setInterval(swiper, subscription ? Math.floor(Math.random() * (timeoutRange.max - timeoutRange.min + 1)) + timeoutRange.min : timeout);
     }
 };
 
@@ -202,6 +228,9 @@ const updateSettings = (result) => {
     if (result.timeout) {
         timeout = result.timeout;
         console.log(`Updated timeout: ${timeout}`);
+    } else if (result.timeoutRange) {
+        timeoutRange = result.timeoutRange;
+        console.log(`Updated timeout range: ${timeoutRange.min} - ${timeoutRange.max}`);
     } else {
         timeout = 1000;  // Default timeout if not set
     }
@@ -225,7 +254,7 @@ const updateSettings = (result) => {
         instantLike = result.instantLike;
         console.log(`Instant like keywords: ${instantLike}`);
     }
-    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
+    printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Timeout range: ${timeoutRange.min}-${timeoutRange.max}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
 };
 
 const getOptions = (callback) => {
@@ -259,16 +288,28 @@ const getSubscription = async () => {
     }
 };
 
+const clearStatistics = () => {
+    rightSwipes = 0;
+    leftSwipes = 0;
+    instantLikes = 0;
+    if (subscription) {
+        chrome.storage.local.set({ 'rightSwipes': 0, 'leftSwipes': 0, 'instantLikes': 0 });
+    } else {
+        chrome.storage.local.remove(['rightSwipes', 'leftSwipes', 'instantLikes']);
+    }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'start') {
+        clearStatistics();
         getSubscription().then(() => {
-            console.log(subscription);
             console.log('Received start message');
             getOptions(startSwiping);  // Ensure options are loaded before starting
         });
     } else if (message.action === 'stop') {
         console.log('Received stop message');
         stopSwiping();
+        clearStatistics();
     }
     sendResponse({ status: 'done' });
 });

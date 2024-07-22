@@ -7,6 +7,9 @@ import Form from 'react-bootstrap/Form';
 import Toast from 'react-bootstrap/Toast';
 import { checkSubscription } from '../../utils/subscription'; // Updated import path
 import debounce from 'lodash/debounce';
+import NonSubscribed from './NonSubscribed';
+import { Alert } from 'react-bootstrap';
+import { has } from 'lodash';
 
 interface Props {
   title: string;
@@ -17,6 +20,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
   const [blacklist, setBlacklist] = useState<string>('');
   const [instantLike, setInstantLike] = useState<string>('');
   const [timeout, setTimeoutValue] = useState<number>(2000);
+  const [timeoutRange, setTimeoutRange] = useState<{ min: number; max: number }>({ min: 2000, max: 5000 });
   const [ageRange, setAgeRange] = useState<{ min: number; max: number }>({ min: 18, max: 100 });
   const [distanceRange, setDistanceRange] = useState<{ min: number; max: number }>({ min: 0, max: 100 });
   const [minPictures, setMinPictures] = useState<number>(1);
@@ -25,7 +29,8 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
   const [verifiedProfiles, setVerifiedProfiles] = useState<boolean>(false);
   const [skipEmptyDescriptions, setSkipEmptyDescriptions] = useState<boolean>(false);
 
-  const options = ['keywords', 'blacklist', 'timeout', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescriptions', 'instantLike'];
+  const options = ['keywords', 'blacklist', 'timeout', 'timeoutRange', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescriptions', 'instantLike'];
+  const subscriptionOptions = ['timeoutRange', 'instantLike'];
 
   const [hasSubscription, setHasSubscription] = useState(false);
 
@@ -49,6 +54,9 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
       if (result.timeout) {
         setTimeoutValue(result.timeout);
       }
+      if (result.timeoutRange) {
+        setTimeoutRange(result.timeoutRange);
+      }
       if (result.ageRange) {
         setAgeRange(result.ageRange);
       }
@@ -69,6 +77,32 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!hasSubscription) {
+      chrome.storage.sync.get(subscriptionOptions, (result) => {
+        if (result.instantLike) {
+          chrome.storage.sync.remove('instantLike', () => {
+            console.log('instantLike setting removed.');
+          });
+        }
+        if (result.timeoutRange) {
+          chrome.storage.sync.remove('timeoutRange', () => {
+            console.log('timeoutRange setting removed.');
+          });
+        }
+      });
+    } else if (hasSubscription) {
+      chrome.storage.sync.get(subscriptionOptions, (result) => {
+        if (result.timeout) {
+          chrome.storage.sync.remove('timeout', () => {
+            console.log('timeout setting removed.');
+          });
+        }
+      });
+    }
+  }, [hasSubscription, subscriptionOptions]);
+
 
   const debouncedSaveSettings = useCallback(
     debounce(() => {
@@ -128,7 +162,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
         chrome.storage.sync.set({
           keywords: keywordsArray,
           blacklist: blacklistArray,
-          timeout: timeout,
+          timeoutRange: timeoutRange,
           ageRange: ageRange,
           distanceRange: distanceRange,
           minPictures: minPictures,
@@ -139,7 +173,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
           console.log('Settings saved:', {
             keywords: keywordsArray,
             blacklist: blacklistArray,
-            timeout: timeout,
+            timeoutRange: timeoutRange,
             ageRange: ageRange,
             distanceRange: distanceRange,
             minPictures: minPictures,
@@ -150,7 +184,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
         });
       }
     }, 1000),
-    [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, hasSubscription]
+    [keywords, blacklist, timeout, timeoutRange, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, hasSubscription]
   );
 
   useEffect(() => {
@@ -158,7 +192,11 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
     return () => {
       debouncedSaveSettings.cancel();
     };
-  }, [keywords, blacklist, timeout, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, debouncedSaveSettings]);
+  }, [keywords, blacklist, timeout, timeoutRange, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, debouncedSaveSettings]);
+
+  const handleTimeoutChange = (field: 'min' | 'max') => (e: ChangeEvent<HTMLInputElement>) => {
+    setTimeoutRange({ ...timeoutRange, [field]: parseInt(e.target.value) });
+  };
 
   const handleAgeRangeChange = (field: 'min' | 'max') => (e: ChangeEvent<HTMLInputElement>) => {
     setAgeRange({ ...ageRange, [field]: parseInt(e.target.value) });
@@ -176,18 +214,55 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
         </Col>
       </Row>
       <Form>
-        <Form.Group as={Row} className="mb-3">
-          <Form.Label column sm={2}>Timeout (ms)</Form.Label>
-          <Col sm={10}>
-            <Form.Control
-              as="input"
-              type="number"
-              value={timeout}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeoutValue(parseInt(e.target.value))}
-              placeholder="Enter timeout here..."
-            />
-          </Col>
-        </Form.Group>
+        {!hasSubscription ? (
+          <Form.Group as={Row} className="mb-3">
+            <Alert variant="warning" className="mt-2">Non-subscribed users can only set a single timeout value.</Alert>
+            <Form.Label column sm={2}>Timeout (ms) </Form.Label>
+            <Col sm={10}>
+              <Form.Control
+                as="input"
+                type="number"
+                value={timeout}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeoutValue(parseInt(e.target.value))}
+                placeholder="Enter timeout here..."
+              />
+            </Col>
+          </Form.Group>
+        ) : (
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={2}>Timeout (ms)</Form.Label>
+            <Col sm={5}>
+              <Form.Control
+                as="input"
+                type="number"
+                value={timeoutRange.min}
+                onChange={handleTimeoutChange('min')}
+                placeholder="Min timeout"
+              />
+              <Form.Range
+                value={timeoutRange.min}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeoutRange({ ...timeoutRange, min: parseInt(e.target.value) })}
+                min={0}
+                max={10000}
+              />
+            </Col>
+            <Col sm={5}>
+              <Form.Control
+                as="input"
+                type="number"
+                value={timeoutRange.max}
+                onChange={handleTimeoutChange('max')}
+                placeholder="Max timeout"
+              />
+              <Form.Range
+                value={timeoutRange.max}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeoutRange({ ...timeoutRange, max: parseInt(e.target.value) })}
+                min={0}
+                max={10000}
+              />
+            </Col>
+          </Form.Group>
+        )}
         <Form.Group as={Row} className="mb-3">
           <Form.Label column sm={2}>Keywords</Form.Label>
           <Col sm={10}>
@@ -312,7 +387,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
             />
           </Col>
         </Form.Group>
-        {hasSubscription && (
+        {hasSubscription ? (
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={2}>Instant Like Keywords</Form.Label>
             <Col sm={10}>
@@ -325,6 +400,8 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
               />
             </Col>
           </Form.Group>
+        ) : (
+          <NonSubscribed feature="Instant Like Keywords" />
         )}
       </Form>
       <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>

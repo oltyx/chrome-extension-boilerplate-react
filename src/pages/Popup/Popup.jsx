@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from 'react-bootstrap/Button';
 import Stack from 'react-bootstrap/Stack';
 import Toast from 'react-bootstrap/Toast';
@@ -6,11 +6,53 @@ import ToastContainer from 'react-bootstrap/ToastContainer';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import ListGroup from 'react-bootstrap/ListGroup';
+import { checkSubscription } from '../../utils/subscription';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function Popup() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [rightSwipes, setRightSwipes] = useState(0);
+  const [leftSwipes, setLeftSwipes] = useState(0);
+  const [instantLikes, setInstantLikes] = useState(0);
+
+  useEffect(() => {
+    chrome.storage.local.get(['token'], (result) => {
+      if (result.token) {
+        checkSubscription().then((subscription) => {
+          setHasSubscription(!!subscription);
+        });
+      }
+    });
+
+    chrome.storage.local.get(['rightSwipes', 'leftSwipes', 'instantLikes'], (result) => {
+      setRightSwipes(result.rightSwipes || 0);
+      setLeftSwipes(result.leftSwipes || 0);
+      setInstantLikes(result.instantLikes || 0);
+    });
+
+    const handleStorageChange = (changes, area) => {
+      if (area === 'local') {
+        if (changes.rightSwipes) {
+          setRightSwipes(changes.rightSwipes.newValue);
+        }
+        if (changes.leftSwipes) {
+          setLeftSwipes(changes.leftSwipes.newValue);
+        }
+        if (changes.instantLikes) {
+          setInstantLikes(changes.instantLikes.newValue);
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
 
   const sendMessage = (action) => {
     if (!['start', 'stop', 'login'].includes(action)) {
@@ -41,7 +83,6 @@ function Popup() {
         }
       });
     }
-
   };
 
   return (
@@ -57,6 +98,19 @@ function Popup() {
           </Stack>
         </Col>
       </Row>
+
+      {hasSubscription && (
+        <Row className="mt-4">
+          <Col>
+            <h2>Swiping Statistics</h2>
+            <ListGroup>
+              <ListGroup.Item>Right Swipes: {rightSwipes}</ListGroup.Item>
+              <ListGroup.Item>Left Swipes: {leftSwipes}</ListGroup.Item>
+              <ListGroup.Item>Instant Likes: {instantLikes}</ListGroup.Item>
+            </ListGroup>
+          </Col>
+        </Row>
+      )}
 
       <ToastContainer position="top-center" className="p-3">
         <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>
