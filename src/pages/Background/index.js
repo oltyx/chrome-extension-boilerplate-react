@@ -25,6 +25,31 @@ function attachDebuggerAndSetGeolocation(tabId, latitude, longitude) {
     }
 }
 
+// Function to detach debugger
+function detachDebugger(tabId, callback) {
+    chrome.debugger.getTargets((targets) => {
+        const isDebuggerAttached = targets.some(target => target.tabId === tabId && target.attached);
+
+        if (isDebuggerAttached) {
+            chrome.debugger.detach({ tabId: tabId }, function () {
+                if (chrome.runtime.lastError) {
+                    console.error('Debugger detach error:', chrome.runtime.lastError);
+                } else {
+                    console.log('Debugger detached from tab:', tabId);
+                    if (callback) {
+                        callback();
+                    }
+                }
+            });
+        } else {
+            console.log('Debugger is not attached to tab:', tabId);
+            if (callback) {
+                callback();
+            }
+        }
+    });
+}
+
 // Retrieve options from storage
 function getOptions(callback) {
     chrome.storage.sync.get(['latitude', 'longitude', 'geoSpoofingEnabled'], function (result) {
@@ -53,7 +78,9 @@ chrome.action.onClicked.addListener((tab) => {
     if (tab.url.startsWith('http') && tab.url.includes('tinder.com')) {
         getOptions((latitude, longitude, geoSpoofingEnabled) => {
             if (geoSpoofingEnabled) {
-                attachDebuggerAndSetGeolocation(tab.id, latitude, longitude);
+                detachDebugger(tab.id, () => {
+                    attachDebuggerAndSetGeolocation(tab.id, latitude, longitude);
+                });
             } else {
                 console.log('Geolocation spoofing is disabled.');
             }
@@ -70,12 +97,31 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         getOptions((latitude, longitude, geoSpoofingEnabled) => {
             if (geoSpoofingEnabled) {
                 console.log('Geolocation spoofing is enabled.');
-                console.log(latitude);
-                console.log(longitude);
-                attachDebuggerAndSetGeolocation(tabId, latitude, longitude);
+                detachDebugger(tabId, () => {
+                    attachDebuggerAndSetGeolocation(tabId, latitude, longitude);
+                });
             } else {
                 console.log('Geolocation spoofing is disabled.');
             }
+        });
+    }
+});
+
+// Listen for storage changes
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'sync' && (changes.latitude || changes.longitude || changes.geoSpoofingEnabled)) {
+        chrome.tabs.query({ url: "*://*.tinder.com/*" }, (tabs) => {
+            tabs.forEach((tab) => {
+                getOptions((latitude, longitude, geoSpoofingEnabled) => {
+                    if (geoSpoofingEnabled) {
+                        detachDebugger(tab.id, () => {
+                            attachDebuggerAndSetGeolocation(tab.id, latitude, longitude);
+                        });
+                    } else {
+                        console.log('Geolocation spoofing is disabled.');
+                    }
+                });
+            });
         });
     }
 });
@@ -90,11 +136,5 @@ chrome.debugger.onEvent.addListener(function (source, method, params) {
 
 // Ensure debugger is detached when a tab is closed
 chrome.tabs.onRemoved.addListener(function (tabId, removeInfo) {
-    chrome.debugger.detach({ tabId: tabId }, function () {
-        if (chrome.runtime.lastError) {
-            console.error('Debugger detach error:', chrome.runtime.lastError);
-        } else {
-            console.log('Debugger detached from tab:', tabId);
-        }
-    });
+    detachDebugger(tabId);
 });

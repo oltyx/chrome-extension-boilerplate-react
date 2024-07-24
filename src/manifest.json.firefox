@@ -5,7 +5,7 @@
   "options_page": "options.html",
   "browser_specific_settings": {
     "gecko": {
-      "id": "swaperquick@gmail.com",
+      "id": "swiperquick@gmail.com",
       "strict_min_version": "58.0"
     }
   },
@@ -13,8 +13,7 @@
     "storage",
     "activeTab",
     "tabs",
-    "geolocation",
-    "scripting"
+    "debugger
   ],
   "host_permissions": [
     "https://tinder.com/*"
