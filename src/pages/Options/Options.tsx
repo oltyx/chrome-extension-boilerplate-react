@@ -1,3 +1,4 @@
+// src/components/Options.tsx
 import React, { useState, useEffect, useCallback, ChangeEvent, ReactElement } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Container from 'react-bootstrap/Container';
@@ -5,11 +6,11 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Toast from 'react-bootstrap/Toast';
-import { checkSubscription } from '../../utils/subscription'; // Updated import path
+import { checkSubscription } from '../../utils/subscription';
 import debounce from 'lodash/debounce';
 import NonSubscribed from './NonSubscribed';
+import MapPicker from '../MapPicker/MapPicker';
 import { Alert } from 'react-bootstrap';
-import { has } from 'lodash';
 
 interface Props {
   title: string;
@@ -28,9 +29,32 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
   const [toastMessage, setToastMessage] = useState<string>('');
   const [verifiedProfiles, setVerifiedProfiles] = useState<boolean>(false);
   const [skipEmptyDescriptions, setSkipEmptyDescriptions] = useState<boolean>(false);
+  const [latitude, setLatitude] = useState<number>(37.7749);
+  const [longitude, setLongitude] = useState<number>(-122.4194);
+  const [geoSpoofingEnabled, setGeoSpoofingEnabled] = useState<boolean>(false);
 
-  const options = ['keywords', 'blacklist', 'timeout', 'timeoutRange', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescriptions', 'instantLike'];
-  const subscriptionOptions = ['timeoutRange', 'instantLike'];
+  const options = [
+    'keywords',
+    'blacklist',
+    'timeout',
+    'timeoutRange',
+    'ageRange',
+    'distanceRange',
+    'minPictures',
+    'verifiedProfiles',
+    'skipEmptyDescriptions',
+    'instantLike',
+    'latitude',
+    'longitude',
+    'geoSpoofingEnabled',
+  ];
+  const subscriptionOptions = [
+    'timeoutRange',
+    'instantLike',
+    'latitude',
+    'longitude',
+    'geoSpoofingEnabled',
+  ];
 
   const [hasSubscription, setHasSubscription] = useState(false);
 
@@ -75,6 +99,15 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
       if (result.instantLike) {
         setInstantLike(Array.isArray(result.instantLike) ? result.instantLike.join('\n') : result.instantLike);
       }
+      if (result.latitude) {
+        setLatitude(result.latitude);
+      }
+      if (result.longitude) {
+        setLongitude(result.longitude);
+      }
+      if (result.geoSpoofingEnabled !== undefined) {
+        setGeoSpoofingEnabled(result.geoSpoofingEnabled);
+      }
     });
   }, []);
 
@@ -91,6 +124,21 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
             console.log('timeoutRange setting removed.');
           });
         }
+        if (result.latitude) {
+          chrome.storage.sync.remove('latitude', () => {
+            console.log('latitude setting removed.');
+          });
+        }
+        if (result.longitude) {
+          chrome.storage.sync.remove('longitude', () => {
+            console.log('longitude setting removed.');
+          });
+        }
+        if (result.geoSpoofingEnabled) {
+          chrome.storage.sync.remove('geoSpoofingEnabled', () => {
+            console.log('geoSpoofingEnabled setting removed.');
+          });
+        }
       });
     } else if (hasSubscription) {
       chrome.storage.sync.get(subscriptionOptions, (result) => {
@@ -102,7 +150,6 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
       });
     }
   }, [hasSubscription, subscriptionOptions]);
-
 
   const debouncedSaveSettings = useCallback(
     debounce(() => {
@@ -169,6 +216,9 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
           verifiedProfiles: verifiedProfiles,
           skipEmptyDescriptions: skipEmptyDescriptions,
           instantLike: instantLikeArray,
+          latitude: latitude,
+          longitude: longitude,
+          geoSpoofingEnabled: geoSpoofingEnabled,
         }, () => {
           console.log('Settings saved:', {
             keywords: keywordsArray,
@@ -179,12 +229,30 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
             minPictures: minPictures,
             verifiedProfiles: verifiedProfiles,
             skipEmptyDescriptions: skipEmptyDescriptions,
-            instantLike: instantLikeArray
+            instantLike: instantLikeArray,
+            latitude: latitude,
+            longitude: longitude,
+            geoSpoofingEnabled: geoSpoofingEnabled,
           });
         });
       }
     }, 1000),
-    [keywords, blacklist, timeout, timeoutRange, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, hasSubscription]
+    [
+      keywords,
+      blacklist,
+      timeout,
+      timeoutRange,
+      ageRange,
+      distanceRange,
+      minPictures,
+      verifiedProfiles,
+      skipEmptyDescriptions,
+      instantLike,
+      hasSubscription,
+      latitude,
+      longitude,
+      geoSpoofingEnabled,
+    ]
   );
 
   useEffect(() => {
@@ -192,7 +260,22 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
     return () => {
       debouncedSaveSettings.cancel();
     };
-  }, [keywords, blacklist, timeout, timeoutRange, ageRange, distanceRange, minPictures, verifiedProfiles, skipEmptyDescriptions, instantLike, debouncedSaveSettings]);
+  }, [
+    keywords,
+    blacklist,
+    timeout,
+    timeoutRange,
+    ageRange,
+    distanceRange,
+    minPictures,
+    verifiedProfiles,
+    skipEmptyDescriptions,
+    instantLike,
+    debouncedSaveSettings,
+    latitude,
+    longitude,
+    geoSpoofingEnabled,
+  ]);
 
   const handleTimeoutChange = (field: 'min' | 'max') => (e: ChangeEvent<HTMLInputElement>) => {
     setTimeoutRange({ ...timeoutRange, [field]: parseInt(e.target.value) });
@@ -388,20 +471,48 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
           </Col>
         </Form.Group>
         {hasSubscription ? (
-          <Form.Group as={Row} className="mb-3">
-            <Form.Label column sm={2}>Instant Like Keywords</Form.Label>
-            <Col sm={10}>
-              <Form.Control
-                as="textarea"
-                rows={5}
-                value={instantLike}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setInstantLike(e.target.value)}
-                placeholder="Enter instant like keywords here..."
-              />
-            </Col>
-          </Form.Group>
+          <>
+            <Form.Group as={Row} className="mb-3">
+              <Form.Label column sm={2}>Instant Like Keywords</Form.Label>
+              <Col sm={10}>
+                <Form.Control
+                  as="textarea"
+                  rows={5}
+                  value={instantLike}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setInstantLike(e.target.value)}
+                  placeholder="Enter instant like keywords here..."
+                />
+              </Col>
+            </Form.Group>
+            <Form.Group as={Row} className="mb-3">
+              <Form.Label column sm={2}>Enable Geolocation Spoofing</Form.Label>
+              <Col sm={10}>
+                <Form.Check
+                  type="checkbox"
+                  checked={geoSpoofingEnabled}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setGeoSpoofingEnabled(e.target.checked)}
+                  label="Enable geolocation spoofing"
+                />
+              </Col>
+            </Form.Group>
+            {geoSpoofingEnabled && (
+              <Form.Group as={Row} className="mb-3">
+                <Form.Label column sm={2}>Pick Location</Form.Label>
+                <Col sm={10}>
+                  <MapPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    onLocationChange={(lat, lng) => {
+                      setLatitude(lat);
+                      setLongitude(lng);
+                    }}
+                  />
+                </Col>
+              </Form.Group>
+            )}
+          </>
         ) : (
-          <NonSubscribed feature="Instant Like Keywords" />
+          <NonSubscribed feature="Instant Like Keywords and Geolocation Spoofing" />
         )}
       </Form>
       <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>

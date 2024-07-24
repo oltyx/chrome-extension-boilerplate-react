@@ -6,7 +6,9 @@
   "permissions": [
     "storage",
     "activeTab",
-    "tabs"
+    "tabs",
+    "debugger",
+    "scripting"
   ],
   "host_permissions": [
     "https://tinder.com/*"

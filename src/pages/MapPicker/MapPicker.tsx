@@ -42,7 +42,12 @@ const MapPicker: React.FC<MapPickerProps> = ({ latitude, longitude, onLocationCh
     const LocationMarker = () => {
         useMapEvents({
             click(e) {
-                onLocationChange(e.latlng.lat, e.latlng.lng);
+                let lng = e.latlng.lng;
+                // Ensure longitude is within the valid range
+                if (lng > 180) lng -= 360;
+                if (lng < -180) lng += 360;
+                console.log(`Location clicked: ${e.latlng.lat}, ${lng}`);
+                onLocationChange(e.latlng.lat, lng);
             }
         });
 
@@ -56,6 +61,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ latitude, longitude, onLocationCh
             center={[latitude, longitude]}
             zoom={13}
             style={{ height: '400px', width: '100%' }}
+            ref={mapRef}
         >
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
