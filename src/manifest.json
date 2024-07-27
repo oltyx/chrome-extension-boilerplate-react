@@ -7,12 +7,10 @@
     "storage",
     "activeTab",
     "tabs",
-    "debugger",
-    "devtools"
+    "debugger"
   ],
   "host_permissions": [
     "https://*.tinder.com/*",
-    "https://*.bumble.com/*",
     "https://*.lovoo.com/*"
   ],
   "background": {
@@ -29,7 +27,6 @@
     {
       "matches": [
         "https://*.tinder.com/*",
-        "https://*.bumble.com/*",
         "https://*.lovoo.com/*"
       ],
       "js": [

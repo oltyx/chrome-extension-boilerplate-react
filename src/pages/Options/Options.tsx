@@ -404,6 +404,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
           </Col>
         </Form.Group>
         <Form.Group as={Row} className="mb-3">
+          <Alert variant="warning" className="mt-2">Distance range filter is not yet available for Lovoo.</Alert>
           <Form.Label column sm={2}>Distance Range (km)</Form.Label>
           <Col sm={5}>
             <Form.Control
@@ -473,6 +474,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
         {hasSubscription ? (
           <>
             <Form.Group as={Row} className="mb-3">
+              <Alert variant="warning" className="mt-2">Instant like is not available for Lovoo.</Alert>
               <Form.Label column sm={2}>Instant Like Keywords</Form.Label>
               <Col sm={10}>
                 <Form.Control
@@ -485,6 +487,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
               </Col>
             </Form.Group>
             <Form.Group as={Row} className="mb-3">
+              <Alert variant="warning" className="mt-2">Geolocation spoofing is not available for Lovoo.</Alert>
               <Form.Label column sm={2}>Enable Geolocation Spoofing</Form.Label>
               <Col sm={10}>
                 <Form.Check
