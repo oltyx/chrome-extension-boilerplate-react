@@ -13,11 +13,11 @@ const login = async ({ email, password }) => {
     return data.token;
 }
 
-const register = async ({ email, password }) => {
+const register = async ({ email, password, firstName, lastName }) => {
     const response = await fetch('https://quickswiper.com/api/user/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, firstName, lastName })
     });
     const data = await response.json();
     if (data.token) {

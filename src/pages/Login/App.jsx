@@ -43,8 +43,8 @@ const App = () => {
     chrome.storage.local.remove('token');
   };
 
-  const handleRegister = async (email, password) => {
-    const token = await register({ email, password });
+  const handleRegister = async (email, password, firstName, lastName) => {
+    const token = await register({ email, password, firstName, lastName });
     if (token) {
       setToken(token);
       const subscription = await checkSubscription();
@@ -140,9 +140,11 @@ const Login = ({ onLogin }) => {
 const Register = ({ onRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   const handleRegister = async () => {
-    await onRegister(email, password);
+    await onRegister(email, password, firstName, lastName);
   };
 
   return (
@@ -150,11 +152,22 @@ const Register = ({ onRegister }) => {
       <Card.Body>
         <Card.Title>Register</Card.Title>
         <Form>
-          <Form.Group controlId="formUsername">
-            <Form.Label>Username</Form.Label>
+          <Form.Group controlId="formFirstName">
+            <Form.Label>First Name</Form.Label>
+            <Form.Control type="text" placeholder="Enter first name" value={firstName}
+              onChange={(e) => setFirstName(e.target.value)} />
+          </Form.Group>
+          <Form.Group controlId="formLastName">
+            <Form.Label>Last Name</Form.Label>
+            <Form.Control type="text" placeholder="Enter last name" value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group controlId="formEmail">
+            <Form.Label>Email</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Enter username"
+              placeholder="Enter email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
