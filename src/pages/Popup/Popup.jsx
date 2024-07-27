@@ -82,6 +82,40 @@ function Popup() {
           setShowToast(true);
         }
       });
+      chrome.tabs.query({ url: '*://*.bumble.com/*' }, (tabs) => {
+        if (tabs.length > 0) {
+          chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError.message);
+              setToastMessage(`Error: ${chrome.runtime.lastError.message}`);
+            } else {
+              setToastMessage(`Action ${action} sent: ${response.status}`);
+            }
+            setShowToast(true);
+          });
+        } else {
+          console.error('No tab with Bumble open found');
+          setToastMessage('No tab with Bumble open found');
+          setShowToast(true);
+        }
+      });
+      chrome.tabs.query({ url: '*://*.lovoo.com/*' }, (tabs) => {
+        if (tabs.length > 0) {
+          chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError.message);
+              setToastMessage(`Error: ${chrome.runtime.lastError.message}`);
+            } else {
+              setToastMessage(`Action ${action} sent: ${response.status}`);
+            }
+            setShowToast(true);
+          });
+        } else {
+          console.error('No tab with Lovoo open found');
+          setToastMessage('No tab with Lovoo open found');
+          setShowToast(true);
+        }
+      });
     }
   };
 

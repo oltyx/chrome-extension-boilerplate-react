@@ -22,6 +22,7 @@ let skipEmptyDescription = false;
 let rightSwipes = 0;
 let leftSwipes = 0;
 let instantLikes = 0;
+let datingApp = "tinder";
 
 const options = ['keywords', 'blacklist', 'timeout', 'timeoutRange', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription', 'instantLike'];
 
@@ -39,35 +40,71 @@ const countSwipes = (direction) => {
     }
 };
 
-const sendSpaceKey = () => {
-    const event = new KeyboardEvent('keydown', {
-        key: ' ', // Space key
-        code: 'Space',
-        keyCode: 32, // keyCode for space
-        charCode: 32, // charCode for space
-        which: 32, // 'which' is also set to 32 for space
-        bubbles: true,
-        cancelable: true
+// Function to send a right arrow key event
+const sendKeyEvent = ({ keyCode }) => {
+
+    chrome.runtime.sendMessage({
+        command: "sendKeyEvent",
+        type: "keyDown", // or "keyUp" depending on the event you want to send
+        keyCode: keyCode // Right arrow key code
     });
-    document.body.dispatchEvent(event);
-    console.log('Space key pressed');
-};
+}
 
-const swipe = (direction) => {
-    const action = direction === 'right' ? 'Like' : direction === 'instant' ? 'Super Like' : 'Nope';
-    const xpath = `//button[.//span[contains(@class, 'Hidden') and text()='${action}']]`;
-    const button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+const swipe = async (direction) => {
+    let action;
+    let xpath;
+    let button;
+    if (datingApp === "bumble") {
+        document.body.focus();
+        if (direction === 'right') {
+            sendKeyEvent(39)
+        } else if (direction === 'instant') {
+            action = 'superswipe';
+        } else {
+            sendKeyEvent(37)
+        }
+    } else if (datingApp === "tinder") {
+        action = direction === 'right' ? 'Like' : direction === 'instant' ? 'Super Like' : 'Nope';
+        xpath = `//button[.//span[contains(@class, 'Hidden') and text()='${action}']]`;
+        button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
-    if (button) {
-        const event = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true
-        });
-        button.dispatchEvent(event);
-        console.log(`Swiped ${direction}`);
-    } else {
-        console.log(`${action} button not found`);
+        if (button) {
+            try {
+                button.focus();
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                button.dispatchEvent(event);
+                console.log(`Swiped ${direction}`);
+            } catch (e) {
+                console.log(`MouseEvent failed: ${e}`);
+            }
+        } else {
+            console.log(`${action} button not found`);
+        }
+    } else if (datingApp === "lovoo") {
+        action = direction === 'right' ? 'yes' : direction === 'instant' ? 'Super Like' : 'no';
+        xpath = `//span[contains(@data-automation-id, 'vote-${action}-button')]`;
+        button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        if (button) {
+            try {
+                button.focus();
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                button.dispatchEvent(event);
+                console.log(`Swiped ${direction}`);
+            } catch (e) {
+                console.log(`MouseEvent failed: ${e}`);
+            }
+        } else {
+            console.log(`${action} button not found`);
+        }
     }
 };
 
@@ -78,128 +115,142 @@ const closeRandomWindows = () => {
         const event = new MouseEvent('click', {
             view: window,
             bubbles: true,
-            cancelable: true
+            cancelable: true,
+            passive: true
         });
         noThanksButton.dispatchEvent(event);
         console.log('Closed "No Thanks" window');
     }
 };
 
-const swiper = async () => {
-    closeRandomWindows();
-    const age = getAge();
-    const numberPhotos = getPhotos();
-    const profileVerified = getVerified();
-    const description = getDescription(); // Fetch the description
-    pressInfoButton();
-    setTimeout(() => {
-        const distance = getDistance();
-        if (age !== null && distance !== null) {
-            if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min && numberPhotos >= minPictures) {
-                if (verifiedProfiles && !profileVerified) {
-                    console.log(`Skipped profile because it is not verified`);
-                    swipe('left');
-                    countSwipes('left');
-                } else if (skipEmptyDescription && description.trim() === "") {
-                    console.log('Skipped profile due to empty description');
-                    swipe('left');
-                    countSwipes('left');
-                } else if (subscription && checkKeywordsInstantLike()) {
-                    swipe('instant');
-                    countSwipes('instant');
-                } else if (checkKeywords() || keywords.length === 0) {
-                    swipe('right');
-                    countSwipes('right');
-                } else {
-                    swipe('left');
-                    countSwipes('left');
-                }
-            } else {
-                console.log(`Skipped profile due to age (${age}), distance (${distance}) or minimum amount of pictures (${numberPhotos})`);
-                swipe('left');
-                countSwipes('left');
-            }
-        } else {
-            console.log('Age or distance not found, swiping left');
-            swipe('left');
-            countSwipes('left');
-        }
-    }, subscription ? Math.floor(Math.random() * (timeoutRange.max - timeoutRange.min + 1)) + timeoutRange.min : timeout);
-};
-
-const startSwiping = () => {
-    if (!swiping) {
-        swiping = true;
-        console.log(`Starting swiping with timeout: ${timeout}ms`);
-        swipeInterval = setInterval(swiper, subscription ? Math.floor(Math.random() * (timeoutRange.max - timeoutRange.min + 1)) + timeoutRange.min : timeout);
-    }
-};
-
-const stopSwiping = () => {
-    if (swiping) {
-        swiping = false;
-        clearInterval(swipeInterval);
-        console.log('Stopped swiping');
-    }
-};
-
 const getDescription = () => {
-    const descriptionElement = document.querySelector(".BreakWord");
-    return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+    if (datingApp === "tinder") {
+        const descriptionElement = document.querySelector('p[itemprop="description"]');
+        return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+    } else if (datingApp === "bumble") {
+        const descriptionElement = document.querySelector('div.encounters-story-profile__description');
+        return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+    } else if (datingApp === "lovoo") {
+        const descriptionElement = document.querySelector('div[ng-if="user.freetext != \'\' && user.verified"] p');
+        return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+    }
 };
 
 const getOtherInfo = () => {
-    const infoElements = document.querySelectorAll("div.Bd.D\\(ib\\).Va\\(m\\)");
+    let infoElements
+    if (datingApp === "tinder") {
+        infoElements = document.querySelectorAll("div.Bd.D\\(ib\\).Va\\(m\\)");
+    }
     return Array.from(infoElements).map(el => stripHtml(el.innerHTML)).join('');
 };
 
 const getName = () => {
-    const nameElement = document.querySelector('span[itemprop="name"]');
+    let nameElement;
+    if (datingApp === "tinder") {
+        nameElement = document.querySelector('span[itemprop="name"]');
+    } else if (datingApp === "bumble") {
+        nameElement = document.querySelector('span.encounters-story-profile__name');
+        console.log(nameElement ? nameElement.innerHTML : "Name element not found");
+    } else if (datingApp === "lovoo") {
+        nameElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[0];
+    }
+
     return nameElement ? nameElement.innerHTML : "";
 };
 
 const getAge = () => {
-    const ageElement = document.querySelector('span[itemprop="age"]');
-    return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
+    let ageElement
+    if (datingApp === "tinder") {
+        ageElement = document.querySelector('span[itemprop="age"]');
+        return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
+    } else if (datingApp === "lovoo") {
+        ageElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[1];
+        return ageElement ? parseInt(ageElement, 10) : 0;
+    }
+
 };
 
 const getPhotos = () => {
-    try {
-        let spanElements = document.querySelectorAll(
-            "div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)"
-        );
-        return spanElements.length;
-    } catch (error) {
-        console.error(`Error processing element: ${error}`);
-        return [""];
+    if (datingApp === "tinder") {
+        try {
+            const spanElements = document.querySelectorAll("div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)");
+            return spanElements.length;
+        } catch (error) {
+            console.error(`Error processing element: ${error}`);
+            return 0;
+        }
+    } else if (datingApp === "lovoo") {
+        try {
+            const spanElements = document.querySelectorAll('img[class*="modal-image"]');
+            console.log(spanElements.length);
+            return spanElements.length;
+        } catch (error) {
+            console.error(`Error processing element: ${error}`);
+            return 0;
+        }
     }
 };
 
 const getVerified = () => {
-    const element = document.querySelector('.D\\(ib\\).Lh\\(0\\).As\\(c\\)');
+    let element
+    if (datingApp === "tinder") {
+        element = document.querySelector('.D\\(ib\\).Lh\\(0\\).As\\(c\\)');
+    }
+    else if (datingApp === "bumble") {
+        element = document.querySelector('div.encounters-story-profile__badge');
+    } else if (datingApp === "lovoo") {
+        element = document.querySelector('div[ng-if="user.freetext != \'\' && user.verified"] img');
+    }
     return element ? true : false;
-}
+};
 
 const getDistance = () => {
-    const svg = document.querySelector('svg.Va\\(m\\).Sq\\(16px\\) path[d*="M11.436 21.17l-.185-.165"]');
-    if (svg) {
-        const kilometersDiv = svg.closest('div.Row').querySelector('div.Us\\(t\\).Va\\(m\\).D\\(ib\\).NetWidth\\(100\\%\\,20px\\).C\\(\\$c-ds-text-secondary\\)');
-        if (kilometersDiv) {
-            const textContent = kilometersDiv.textContent.trim();
-            const kilometers = textContent.match(/\d+/)[0]; // Extract only the number
-            return parseInt(kilometers, 10);
+    if (datingApp === "bumble") {
+        const distanceElement = document.querySelector('div.encounters-story-profile__distance');
+        if (distanceElement) {
+            const distance = distanceElement.textContent.trim();
+            return parseInt(distance.match(/\d+/)[0], 10);
         } else {
-            console.log('Kilometers div not found.');
+            console.log('Distance element not found.');
             return null;
         }
+    } else if (datingApp === "tinder") {
+
+        const svg = document.querySelector('svg.Va\\(m\\).Sq\\(16px\\) path[d*="M11.436 21.17l-.185-.165"]');
+        if (svg) {
+            const kilometersDiv = svg.closest('div.Row').querySelector('div.Us\\(t\\).Va\\(m\\).D\\(ib\\).NetWidth\\(100\\%\\,20px\\).C\\(\\$c-ds-text-secondary\\)');
+            if (kilometersDiv) {
+                const textContent = kilometersDiv.textContent.trim();
+                const kilometers = textContent.match(/\d+/)[0]; // Extract only the number
+                return parseInt(kilometers, 10);
+            } else {
+                console.log('Kilometers div not found.');
+                return null;
+            }
+        }
+        //}
+        // else if (datingApp === "lovoo") {
+        //     const getCity = document.querySelector('div[ng-if="user.locations.getCity()"]')
     } else {
-        console.log('SVG not found.');
+        console.log('Not found.');
         return null;
     }
 };
+const getCurrentLocation = () => {
+    navigator.geolocation.getCurrentPosition((position) => {
+        console.log('Latitude:', position.coords.latitude, 'Longitude:', position.coords.longitude);
+    });
+};
 
 const pressInfoButton = () => {
-    const button = document.querySelector('button.P\\(0\\).Trsdu\\(\\$normal\\).Sq\\(28px\\).Bdrs\\(50\\%\\).Cur\\(p\\).Ta\\(c\\).Scale\\(1\\.2\\)\\:h.CenterAlign.M\\(a\\).focus-button-style');
+    let button
+    if (datingApp === "tinder") {
+        button = document.querySelector('button.P\\(0\\).Trsdu\\(\\$normal\\).Sq\\(28px\\).Bdrs\\(50\\%\\).Cur\\(p\\).Ta\\(c\\).Scale\\(1\\.2\\)\\:h.CenterAlign.M\\(a\\).focus-button-style');
+    } else if (datingApp === "bumble") {
+        button = document.querySelector('button.encounters-story-profile__info-button');
+    } else if (datingApp === "lovoo") {
+        button = document.querySelector('[data-automation-id="match-user-profile-link"]');
+    }
     if (button) {
         button.click();
     } else {
@@ -228,11 +279,10 @@ const updateSettings = (result) => {
     if (result.timeout) {
         timeout = result.timeout;
         console.log(`Updated timeout: ${timeout}`);
-    } else if (result.timeoutRange) {
+    }
+    if (result.timeoutRange) {
         timeoutRange = result.timeoutRange;
         console.log(`Updated timeout range: ${timeoutRange.min} - ${timeoutRange.max}`);
-    } else {
-        timeout = 1000;  // Default timeout if not set
     }
     if (result.ageRange) {
         ageRange = result.ageRange;
@@ -257,10 +307,12 @@ const updateSettings = (result) => {
     printLine(`Updated settings - Keywords: ${keywords}, Blacklist: ${blacklist}, Timeout: ${timeout}, Timeout range: ${timeoutRange.min}-${timeoutRange.max}, Age range: ${ageRange.min}-${ageRange.max}, Distance range: ${distanceRange.min}-${distanceRange.max}`);
 };
 
-const getOptions = (callback) => {
-    chrome.storage.sync.get(options, (result) => {
-        updateSettings(result);
-        if (callback) callback();
+const getOptions = async () => {
+    return new Promise((resolve) => {
+        chrome.storage.sync.get(options, (result) => {
+            updateSettings(result);
+            resolve();
+        });
     });
 };
 
@@ -274,7 +326,7 @@ const checkKeywords = () => {
 
 const checkKeywordsInstantLike = () => {
     const content = (getDescription() + getOtherInfo() + getName()).toLowerCase();
-    const keywordMatch = instantLike.some(keyword => content.includes(instantLike.toLowerCase()));
+    const keywordMatch = instantLike.some(keyword => content.includes(keyword.toLowerCase()));
     return keywordMatch;
 };
 
@@ -293,25 +345,105 @@ const clearStatistics = () => {
     leftSwipes = 0;
     instantLikes = 0;
     if (subscription) {
-        chrome.storage.local.set({ 'rightSwipes': 0, 'leftSwipes': 0, 'instantLikes': 0 });
+        chrome.storage.local.set({ rightSwipes: 0, leftSwipes: 0, instantLikes: 0 });
     } else {
         chrome.storage.local.remove(['rightSwipes', 'leftSwipes', 'instantLikes']);
     }
-}
+};
+
+const swiper = async () => {
+    closeRandomWindows();
+    const age = getAge();
+    if (datingApp === "lovoo") {
+        pressInfoButton();
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Add a delay to ensure profile information is loaded
+    }
+    const numberPhotos = getPhotos();
+    const profileVerified = getVerified();
+    const description = getDescription(); // Fetch the description
+    if (datingApp === "tinder") {
+        pressInfoButton();
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Add a delay to ensure profile information is loaded
+    }
+
+    const distance = getDistance();
+    if (age !== null && distance !== null) {
+        if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min && numberPhotos >= minPictures) {
+            if (verifiedProfiles && !profileVerified) {
+                console.log(`Skipped profile because it is not verified`);
+                await swipe('left');
+                countSwipes('left');
+            } else if (skipEmptyDescription && description.trim() === "") {
+                console.log('Skipped profile due to empty description');
+                await swipe('left');
+                countSwipes('left');
+            } else if (subscription && checkKeywordsInstantLike()) {
+                await swipe('instant');
+                countSwipes('instant');
+            } else if (checkKeywords() || keywords.length === 0) {
+                await swipe('right');
+                countSwipes('right');
+            } else {
+                await swipe('left');
+                countSwipes('left');
+            }
+        } else {
+            console.log(`Skipped profile due to age (${age}), distance (${distance}) or minimum amount of pictures (${numberPhotos})`);
+            await swipe('left');
+            countSwipes('left');
+        }
+    } else {
+        console.log('Age or distance not found, swiping left');
+        await swipe('left');
+        countSwipes('left');
+    }
+};
+
+const startSwiping = async () => {
+    if (!swiping) {
+        swiping = true;
+        console.log(`Starting swiping with timeout: ${timeout}ms`);
+        const interval = subscription ? Math.floor(Math.random() * (timeoutRange.max - timeoutRange.min + 1)) + timeoutRange.min : timeout;
+        console.log(`Swipe interval set to ${interval} ms (Subscription: ${subscription ? 'Yes' : 'No'})`);
+        swipeInterval = setInterval(swiper, interval);
+    }
+};
+
+const stopSwiping = () => {
+    if (swiping) {
+        swiping = false;
+        clearInterval(swipeInterval);
+        console.log('Stopped swiping');
+    }
+};
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'start') {
         clearStatistics();
+        if (window.location.href.includes("bumble.com")) datingApp = "bumble";
+        else if (window.location.href.includes("tinder.com")) datingApp = "tinder";
+        else if (window.location.href.includes("lovoo.com")) datingApp = "lovoo";
         getSubscription().then(() => {
             console.log('Received start message');
-            getOptions(startSwiping);  // Ensure options are loaded before starting
+            getOptions().then(() => {
+                startSwiping();
+                sendResponse({ status: 'started' });
+            }).catch(err => {
+                console.error('Error starting swiping:', err);
+                sendResponse({ status: 'error', error: err.message });
+            });
+        }).catch(err => {
+            console.error('Error getting subscription:', err);
+            sendResponse({ status: 'error', error: err.message });
         });
+        return true;  // Indicate async response
     } else if (message.action === 'stop') {
         console.log('Received stop message');
         stopSwiping();
         clearStatistics();
+        sendResponse({ status: 'stopped' });
     }
-    sendResponse({ status: 'done' });
+    return true;  // Indicate async response
 });
 
 // Listen for changes in Chrome storage and update settings dynamically

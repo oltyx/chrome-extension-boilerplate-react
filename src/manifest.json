@@ -7,11 +7,13 @@
     "storage",
     "activeTab",
     "tabs",
-    "debugger"
+    "debugger",
+    "devtools"
   ],
   "host_permissions": [
     "https://*.tinder.com/*",
-    "https://*.bumble.com/*"
+    "https://*.bumble.com/*",
+    "https://*.lovoo.com/*"
   ],
   "background": {
     "service_worker": "background.bundle.js"
@@ -27,7 +29,8 @@
     {
       "matches": [
         "https://*.tinder.com/*",
-        "https://*.bumble.com/*"
+        "https://*.bumble.com/*",
+        "https://*.lovoo.com/*"
       ],
       "js": [
         "contentScript.bundle.js"
