@@ -3,12 +3,6 @@
   "name": "QuickSwiper",
   "description": "Automated Tinder swiper",
   "options_page": "options.html",
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "swiperquick@gmail.com",
-      "strict_min_version": "58.0"
-    }
-  },
   "permissions": [
     "storage",
     "activeTab",
@@ -16,12 +10,11 @@
     "debugger"
   ],
   "host_permissions": [
-    "https://tinder.com/*"
+    "https://*.tinder.com/*",
+    "https://*.bumble.com/*"
   ],
   "background": {
-    "scripts": [
-      "background.bundle.js"
-    ]
+    "service_worker": "background.bundle.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -33,7 +26,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://tinder.com/*"
+        "https://*.tinder.com/*",
+        "https://*.bumble.com/*"
       ],
       "js": [
         "contentScript.bundle.js"
