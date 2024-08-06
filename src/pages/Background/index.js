@@ -105,7 +105,7 @@ chrome.action.onClicked.addListener((tab) => {
         }
     });
 
-    if (tab.url.startsWith('http') && (tab.url.includes('tinder.com') || tab.url.includes('bumble.com') || tab.url.includes('lovoo.com'))) {
+    if (tab.url.startsWith('http') && (tab.url.includes('tinder.com') || tab.url.includes('bumble.com') || tab.url.includes('lovoo.com') || tab.url.includes('badoo.com'))) {
         getOptions((latitude, longitude, geoSpoofingEnabled) => {
             if (geoSpoofingEnabled) {
                 detachDebugger(tab.id, () => {
@@ -122,7 +122,7 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Listen for tab updates
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url.startsWith('http') && (tab.url.includes('tinder.com') || tab.url.includes('bumble.com') || tab.url.includes('lovoo.com'))) {
+    if (changeInfo.status === 'complete' && tab.url.startsWith('http') && (tab.url.includes('tinder.com') || tab.url.includes('bumble.com') || tab.url.includes('lovoo.com') || tab.url.includes('badoo.com'))) {
         console.log('Tab updated, URL:', tab.url);
         getOptions((latitude, longitude, geoSpoofingEnabled) => {
             if (geoSpoofingEnabled) {
@@ -141,6 +141,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync' && (changes.latitude || changes.longitude || changes.geoSpoofingEnabled)) {
         chrome.tabs.query({ url: "*://*.tinder.com/*" }, (tabs) => {
+            tabs.forEach((tab) => {
+                getOptions((latitude, longitude, geoSpoofingEnabled) => {
+                    if (geoSpoofingEnabled) {
+                        detachDebugger(tab.id, () => {
+                            attachDebuggerAndSetGeolocation(tab.id, latitude, longitude);
+                        });
+                    } else {
+                        console.log('Geolocation spoofing is disabled.');
+                    }
+                });
+            });
+        });
+        chrome.tabs.query({ url: "*://*.lovoo.com/*" }, (tabs) => {
             tabs.forEach((tab) => {
                 getOptions((latitude, longitude, geoSpoofingEnabled) => {
                     if (geoSpoofingEnabled) {

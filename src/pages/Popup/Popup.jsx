@@ -116,6 +116,23 @@ function Popup() {
           setShowToast(true);
         }
       });
+      chrome.tabs.query({ url: '*://*.badoo.com/*' }, (tabs) => {
+        if (tabs.length > 0) {
+          chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError.message);
+              setToastMessage(`Error: ${chrome.runtime.lastError.message}`);
+            } else {
+              setToastMessage(`Action ${action} sent: ${response.status}`);
+            }
+            setShowToast(true);
+          });
+        } else {
+          console.error('No tab with Badoo open found');
+          setToastMessage('No tab with Badoo open found');
+          setShowToast(true);
+        }
+      });
     }
   };
 

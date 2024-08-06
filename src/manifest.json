@@ -11,7 +11,9 @@
   ],
   "host_permissions": [
     "https://*.tinder.com/*",
-    "https://*.lovoo.com/*"
+    "https://*.lovoo.com/*",
+    "https://*.bumble.com/*",
+    "https://*.badoo.com/*"
   ],
   "background": {
     "service_worker": "background.bundle.js"
@@ -27,7 +29,9 @@
     {
       "matches": [
         "https://*.tinder.com/*",
-        "https://*.lovoo.com/*"
+        "https://*.lovoo.com/*",
+        "https://*.bumble.com/*",
+        "https://*.badoo.com/*"
       ],
       "js": [
         "contentScript.bundle.js"

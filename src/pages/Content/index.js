@@ -55,13 +55,25 @@ const swipe = async (direction) => {
     let xpath;
     let button;
     if (datingApp === "bumble") {
-        document.body.focus();
-        if (direction === 'right') {
-            sendKeyEvent(39)
-        } else if (direction === 'instant') {
-            action = 'superswipe';
+        action = direction === 'right' ? 'yes' : direction === 'superswipe' ? 'Super Like' : 'no';
+        xpath = `//span[contains(@data-qa-icon-name, "floating-action-${action}")]`;
+        button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        if (button) {
+            try {
+                button.focus();
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                button.dispatchEvent(event);
+                console.log(`Swiped ${direction}`);
+            } catch (e) {
+                console.log(`MouseEvent failed: ${e}`);
+            }
         } else {
-            sendKeyEvent(37)
+            console.log(`${action} button not found`);
         }
     } else if (datingApp === "tinder") {
         action = direction === 'right' ? 'Like' : direction === 'instant' ? 'Super Like' : 'Nope';
@@ -105,23 +117,79 @@ const swipe = async (direction) => {
         } else {
             console.log(`${action} button not found`);
         }
+    } else if (datingApp === "badoo") {
+        if (direction === 'right') {
+            action = 'yes';
+        } else if (direction === 'instant') {
+            action = 'crush';
+        } else {
+            action = 'no';
+        }
+        const selector = `button[data-qa*='profile-card-action-vote-${action}']`;
+        console.log(selector);
+
+        const button = document.querySelector(selector);
+        const element = document.querySelector("body");
+        element.style.transform = "scale(1)";
+
+        if (button) {
+            try {
+                // Ensure the button is in focus and visible
+                button.focus();
+                button.scrollIntoView();
+
+                // Simulate mouseover, mousedown, mouseup, and click events
+                ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(eventType => {
+                    const event = new MouseEvent(eventType, {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true,
+                        composed: true
+                    });
+                    button.dispatchEvent(event);
+                });
+
+                console.log(`Swiped ${direction}`);
+            } catch (e) {
+                console.log(`MouseEvent failed: ${e}`);
+            }
+        } else {
+            console.log(`${action} button not found`);
+        }
     }
+
 };
 
 const closeRandomWindows = () => {
-    const xpath = "//div[text()='No Thanks']";
-    const noThanksButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    if (noThanksButton) {
-        const event = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            passive: true
-        });
-        noThanksButton.dispatchEvent(event);
-        console.log('Closed "No Thanks" window');
-    }
-};
+    if (datingApp === "tinder") {
+
+        const xpath = "//div[text()='No Thanks']";
+        const noThanksButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (noThanksButton) {
+            const event = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                passive: true
+            });
+            noThanksButton.dispatchEvent(event);
+            console.log('Closed "No Thanks" window');
+        }
+    } else if (datingApp === "badoo") {
+        const xpath = "//button[contains(@data-qa, 'action-sheet-item')]";
+        const closeButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (closeButton) {
+            const event = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                passive: true
+            });
+            closeButton.dispatchEvent(event);
+            console.log('Closed modal window');
+        }
+    };
+}
 
 const getDescription = () => {
     if (datingApp === "tinder") {
@@ -133,6 +201,9 @@ const getDescription = () => {
     } else if (datingApp === "lovoo") {
         const descriptionElement = document.querySelector('div[ng-if="user.freetext != \'\' && user.verified"] p');
         return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+    } else if (datingApp === "badoo") {
+        const descriptionElement = document.querySelector('span.csms-text-break-words');
+        return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
     }
 };
 
@@ -140,6 +211,12 @@ const getOtherInfo = () => {
     let infoElements
     if (datingApp === "tinder") {
         infoElements = document.querySelectorAll("div.Bd.D\\(ib\\).Va\\(m\\)");
+    } else if (datingApp === "bumble") {
+        return null
+    } else if (datingApp === "lovoo") {
+        return null
+    } else if (datingApp === "badoo") {
+        infoElements = document.querySelectorAll('span.csms-badge__text');
     }
     return Array.from(infoElements).map(el => stripHtml(el.innerHTML)).join('');
 };
@@ -153,6 +230,8 @@ const getName = () => {
         console.log(nameElement ? nameElement.innerHTML : "Name element not found");
     } else if (datingApp === "lovoo") {
         nameElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[0];
+    } else if (datingApp === "badoo") {
+        nameElement = document.querySelector('span[data-qa="profile-info__name"]');
     }
 
     return nameElement ? nameElement.innerHTML : "";
@@ -166,6 +245,9 @@ const getAge = () => {
     } else if (datingApp === "lovoo") {
         ageElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[1];
         return ageElement ? parseInt(ageElement, 10) : 0;
+    } else if (datingApp === "badoo") {
+        ageElement = document.querySelector('span[data-qa="profile-info__age"]');
+        return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
     }
 
 };
@@ -182,8 +264,15 @@ const getPhotos = () => {
     } else if (datingApp === "lovoo") {
         try {
             const spanElements = document.querySelectorAll('img[class*="modal-image"]');
-            console.log(spanElements.length);
             return spanElements.length;
+        } catch (error) {
+            console.error(`Error processing element: ${error}`);
+            return 0;
+        }
+    } else if (datingApp === "badoo") {
+        try {
+            const spanElements = document.querySelectorAll('img[data-qa="multimedia-image"]');
+            return spanElements.length - 1;
         } catch (error) {
             console.error(`Error processing element: ${error}`);
             return 0;
@@ -200,6 +289,8 @@ const getVerified = () => {
         element = document.querySelector('div.encounters-story-profile__badge');
     } else if (datingApp === "lovoo") {
         element = document.querySelector('div[ng-if="user.freetext != \'\' && user.verified"] img');
+    } else if (datingApp === "badoo") {
+        element = document.querySelector('span[data-qa-icon-name="badge-feature-verification"]');
     }
     return element ? true : false;
 };
@@ -233,7 +324,7 @@ const getDistance = () => {
         //     const getCity = document.querySelector('div[ng-if="user.locations.getCity()"]')
     } else {
         console.log('Not found.');
-        return null;
+        return 0;
     }
 };
 const getCurrentLocation = () => {
@@ -423,6 +514,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (window.location.href.includes("bumble.com")) datingApp = "bumble";
         else if (window.location.href.includes("tinder.com")) datingApp = "tinder";
         else if (window.location.href.includes("lovoo.com")) datingApp = "lovoo";
+        else if (window.location.href.includes("badoo.com")) datingApp = "badoo";
+        else datingApp = "unknown";
         getSubscription().then(() => {
             console.log('Received start message');
             getOptions().then(() => {
