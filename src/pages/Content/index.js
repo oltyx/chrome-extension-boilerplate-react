@@ -6,7 +6,7 @@ console.log('Must reload extension for modifications to take effect.');
 
 printLine("Using the 'printLine' function from the Print Module");
 
-let subscription = null;
+let subscription = true;
 let swiping = false;
 let swipeInterval;
 let instantLike = [];
@@ -15,7 +15,7 @@ let blacklist = [];
 let timeout = 1000;  // Default timeout value
 let timeoutRange = { min: 1000, max: 5000 };  // Default timeout range for subscribed users
 let ageRange = { min: 18, max: 100 }; // Default age range
-let distanceRange = { min: 0, max: 100 };  // Default distance range
+let distanceRange = { min: 0, max: 5000 };  // Default distance range
 let minPictures = 1;
 let verifiedProfiles = false;
 let skipEmptyDescription = false;
@@ -27,17 +27,17 @@ let datingApp = "tinder";
 const options = ['keywords', 'blacklist', 'timeout', 'timeoutRange', 'ageRange', 'distanceRange', 'minPictures', 'verifiedProfiles', 'skipEmptyDescription', 'instantLike'];
 
 const countSwipes = (direction) => {
-    if (subscription) {
-        if (direction === 'right') {
-            rightSwipes++;
-        } else if (direction === 'left') {
-            leftSwipes++;
-        } else if (direction === 'instant') {
-            instantLikes++;
-        }
-        console.log(`Right swipes: ${rightSwipes}, Left swipes: ${leftSwipes}, Instant likes: ${instantLikes}`);
-        chrome.storage.local.set({ rightSwipes, leftSwipes, instantLikes });
+    //if (subscription) {
+    if (direction === 'right') {
+        rightSwipes++;
+    } else if (direction === 'left') {
+        leftSwipes++;
+    } else if (direction === 'instant') {
+        instantLikes++;
     }
+    console.log(`Right swipes: ${rightSwipes}, Left swipes: ${leftSwipes}, Instant likes: ${instantLikes}`);
+    chrome.storage.local.set({ rightSwipes, leftSwipes, instantLikes });
+    //}
 };
 
 // Function to send a right arrow key event
@@ -240,7 +240,7 @@ const getName = () => {
 const getAge = () => {
     let ageElement
     if (datingApp === "tinder") {
-        ageElement = document.querySelector('span[itemprop="age"]');
+        ageElement = document.querySelector('span.Whs\\(nw\\).Typs\\(display-2-strong\\)');
         return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
     } else if (datingApp === "lovoo") {
         ageElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[1];
@@ -255,7 +255,7 @@ const getAge = () => {
 const getPhotos = () => {
     if (datingApp === "tinder") {
         try {
-            const spanElements = document.querySelectorAll("div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) span.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)");
+            const spanElements = document.querySelectorAll("div[data-keyboard-gamepad='true'][aria-hidden='false'].Tcha\\(n\\) div.keen-slider__slide.Wc\\(\\$transform\\).Fxg\\(1\\)");
             return spanElements.length;
         } catch (error) {
             console.error(`Error processing element: ${error}`);
@@ -306,10 +306,9 @@ const getDistance = () => {
             return null;
         }
     } else if (datingApp === "tinder") {
-
-        const svg = document.querySelector('svg.Va\\(m\\).Sq\\(16px\\) path[d*="M11.436 21.17l-.185-.165"]');
+        const svg = document.querySelector('svg.Va\\(tt\\).Sq\\(16px\\)[aria-hidden="true"][role="presentation"] path[d="M12.301 23.755c.746-.659 9.449-8.339 9.449-14.337C21.75 4.138 17.463 0 11.998 0 6.534 0 2.25 4.138 2.25 9.418c0 2.675 1.602 5.91 4.769 9.616a45.204 45.204 0 0 0 4.737 4.759l.246.207.26-.21zm-.305-2.424c.94-.889 2.376-2.32 3.77-4.011 1.084-1.315 2.105-2.741 2.847-4.152.753-1.433 1.142-2.705 1.142-3.75 0-4.113-3.328-7.423-7.757-7.423-4.428 0-7.753 3.309-7.753 7.423 0 1.941 1.208 4.713 4.29 8.319a42.901 42.901 0 0 0 3.461 3.594"]')
         if (svg) {
-            const kilometersDiv = svg.closest('div.Row').querySelector('div.Us\\(t\\).Va\\(m\\).D\\(ib\\).NetWidth\\(100\\%\\,20px\\).C\\(\\$c-ds-text-secondary\\)');
+            const kilometersDiv = svg.parentElement.parentElement.parentElement.parentElement.querySelector('div.C\\(\\$c-ds-text-secondary\\)');
             if (kilometersDiv) {
                 const textContent = kilometersDiv.textContent.trim();
                 const kilometers = textContent.match(/\d+/)[0]; // Extract only the number
@@ -408,11 +407,21 @@ const getOptions = async () => {
 };
 
 const checkKeywords = () => {
-    const content = (getDescription() + getOtherInfo() + getName()).toLowerCase();
-    const keywordMatch = keywords.some(keyword => content.includes(keyword.toLowerCase()));
-    const blacklistMatch = blacklist.some(keyword => content.includes(keyword.toLowerCase()));
-    console.log(`Checking keywords. Keyword match: ${keywordMatch}, Blacklist match: ${blacklistMatch}`);
-    return keywordMatch && !blacklistMatch;
+    const description = getDescription();
+    const otherInfo = getOtherInfo();
+    const name = getName();
+    if (keywords === null || blacklist === null) {
+        return true
+    } else if (keywords === "" || blacklist === "") {
+        return true
+    } else if (keywords.length < 1 || blacklist.length < 1) {
+        return true
+    } else {
+        const content = (description + otherInfo + name).toLowerCase();
+        const keywordMatch = keywords.some(keyword => content.includes(keyword.toLowerCase()));
+        const blacklistMatch = blacklist.some(keyword => content.includes(keyword.toLowerCase()));
+        return keywordMatch && !blacklistMatch;
+    }
 };
 
 const checkKeywordsInstantLike = () => {
@@ -435,16 +444,15 @@ const clearStatistics = () => {
     rightSwipes = 0;
     leftSwipes = 0;
     instantLikes = 0;
-    if (subscription) {
-        chrome.storage.local.set({ rightSwipes: 0, leftSwipes: 0, instantLikes: 0 });
-    } else {
-        chrome.storage.local.remove(['rightSwipes', 'leftSwipes', 'instantLikes']);
-    }
+    // if (subscription) {
+    chrome.storage.local.set({ rightSwipes: 0, leftSwipes: 0, instantLikes: 0 });
+    //     } else {
+    //         chrome.storage.local.remove(['rightSwipes', 'leftSwipes', 'instantLikes']);
+    //     }
 };
 
 const swiper = async () => {
     closeRandomWindows();
-    const age = getAge();
     if (datingApp === "lovoo") {
         pressInfoButton();
         await new Promise(resolve => setTimeout(resolve, 1000)); // Add a delay to ensure profile information is loaded
@@ -456,37 +464,46 @@ const swiper = async () => {
         pressInfoButton();
         await new Promise(resolve => setTimeout(resolve, 1000)); // Add a delay to ensure profile information is loaded
     }
-
+    const age = getAge();
     const distance = getDistance();
     if (age !== null && distance !== null) {
-        if (age >= ageRange.min && age <= ageRange.max && distance <= distanceRange.max && distance >= distanceRange.min && numberPhotos >= minPictures) {
-            if (verifiedProfiles && !profileVerified) {
-                console.log(`Skipped profile because it is not verified`);
-                await swipe('left');
-                countSwipes('left');
-            } else if (skipEmptyDescription && description.trim() === "") {
-                console.log('Skipped profile due to empty description');
-                await swipe('left');
-                countSwipes('left');
-            } else if (subscription && checkKeywordsInstantLike()) {
-                await swipe('instant');
-                countSwipes('instant');
-            } else if (checkKeywords() || keywords.length === 0) {
-                await swipe('right');
-                countSwipes('right');
-            } else {
-                await swipe('left');
-                countSwipes('left');
-            }
-        } else {
-            console.log(`Skipped profile due to age (${age}), distance (${distance}) or minimum amount of pictures (${numberPhotos})`);
+        if (age < ageRange.min || age > ageRange.max) {
+            console.log(`Skipped profile due to age (${age})`);
             await swipe('left');
             countSwipes('left');
+        } else if (distance > distanceRange.max || distance < distanceRange.min) {
+            console.log(`Skipped profile due to distance (${distance})`);
+            await swipe('left');
+            countSwipes('left');
+        } else if (numberPhotos < minPictures) {
+            console.log(`Skipped profile due to min amount of pictures (${numberPhotos})`);
+            await swipe('left');
+            countSwipes('left');
+        } else if (verifiedProfiles && !profileVerified) {
+            console.log(`Skipped profile because it is not verified`);
+            await swipe('left');
+            countSwipes('left');
+        } else if (skipEmptyDescription && description.trim() === "") {
+            console.log('Skipped profile due to empty description');
+            await swipe('left');
+            countSwipes('left');
+        } else if (!checkKeywords()) {
+            console.log('Skipped profile due to keywords');
+            await swipe('left');
+            countSwipes('left');
+        } else if (checkKeywordsInstantLike()) {
+            await swipe('instant');
+            countSwipes('instant');
+        } else {
+            console.log(`Age: ${age}, Distance: ${distance}`);
+            await swipe('right');
+            countSwipes('right');
         }
     } else {
-        console.log('Age or distance not found, swiping left');
-        await swipe('left');
-        countSwipes('left');
+        console.log('Age or distance not found, swiping right');
+        console.log(`Age: ${age}, Distance: ${distance}`);
+        await swipe('right');
+        countSwipes('right');
     }
 };
 
@@ -516,19 +533,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         else if (window.location.href.includes("lovoo.com")) datingApp = "lovoo";
         else if (window.location.href.includes("badoo.com")) datingApp = "badoo";
         else datingApp = "unknown";
-        getSubscription().then(() => {
-            console.log('Received start message');
-            getOptions().then(() => {
-                startSwiping();
-                sendResponse({ status: 'started' });
-            }).catch(err => {
-                console.error('Error starting swiping:', err);
-                sendResponse({ status: 'error', error: err.message });
-            });
+        // getSubscription().then(() => {
+        console.log('Received start message');
+        getOptions().then(() => {
+            startSwiping();
+            sendResponse({ status: 'started' });
         }).catch(err => {
-            console.error('Error getting subscription:', err);
+            console.error('Error starting swiping:', err);
             sendResponse({ status: 'error', error: err.message });
         });
+        // }).catch(err => {
+        //     console.error('Error getting subscription:', err);
+        //     sendResponse({ status: 'error', error: err.message });
+        // });
         return true;  // Indicate async response
     } else if (message.action === 'stop') {
         console.log('Received stop message');
@@ -543,13 +560,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         console.log('Detected changes in Chrome storage');
-        chrome.storage.sync.get(options, (result) => {
-            updateSettings(result);
+        getOptions().then(() => {   // Update settings
             if (swiping) {
                 console.log('Restarting swiping with updated settings');
                 stopSwiping();
                 startSwiping();
             }
+        }).catch(err => {
+            console.error('Error updating settings:', err);
         });
+
     }
 });

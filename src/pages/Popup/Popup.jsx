@@ -13,7 +13,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 function Popup() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(true);
   const [rightSwipes, setRightSwipes] = useState(0);
   const [leftSwipes, setLeftSwipes] = useState(0);
   const [instantLikes, setInstantLikes] = useState(0);
@@ -145,7 +145,7 @@ function Popup() {
             <Button variant="success" size="lg" onClick={() => sendMessage('start')}>Start Swiping</Button>
             <Button variant="danger" size="lg" onClick={() => sendMessage('stop')}>Stop Swiping</Button>
             <Button variant="primary" size="lg" onClick={() => chrome.runtime.openOptionsPage()}>Options</Button>
-            <Button variant="info" size="lg" onClick={() => sendMessage('login')}>Login/register</Button>
+            {/* <Button variant="info" size="lg" onClick={() => sendMessage('login')}>Login/register</Button> */}
           </Stack>
         </Col>
       </Row>

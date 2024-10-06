@@ -23,7 +23,7 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
   const [timeout, setTimeoutValue] = useState<number>(2000);
   const [timeoutRange, setTimeoutRange] = useState<{ min: number; max: number }>({ min: 2000, max: 5000 });
   const [ageRange, setAgeRange] = useState<{ min: number; max: number }>({ min: 18, max: 100 });
-  const [distanceRange, setDistanceRange] = useState<{ min: number; max: number }>({ min: 0, max: 100 });
+  const [distanceRange, setDistanceRange] = useState<{ min: number; max: number }>({ min: 0, max: 5000 });
   const [minPictures, setMinPictures] = useState<number>(1);
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>('');
@@ -56,18 +56,19 @@ const Options: React.FC<Props> = ({ title }): ReactElement => {
     'geoSpoofingEnabled',
   ];
 
-  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(true);
 
   useEffect(() => {
     // Retrieve settings and token from Chrome storage on component mount
-    chrome.storage.local.get(['token'], (result) => {
-      if (result.token) {
-        checkSubscription().then((subscription) => {
-          setHasSubscription(!!subscription);
-        });
-      }
-    });
+    // chrome.storage.local.get(['token'], (result) => {
+    //   if (result.token) {
+    //     checkSubscription().then((subscription) => {
+    //       setHasSubscription(!!subscription);
+    //     });
+    //   }
 
+    // });
+    setHasSubscription(true)
     chrome.storage.sync.get(options, (result) => {
       if (result.keywords) {
         setKeywords(Array.isArray(result.keywords) ? result.keywords.join('\n') : result.keywords);
