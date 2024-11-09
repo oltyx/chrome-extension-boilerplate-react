@@ -164,16 +164,21 @@ const closeRandomWindows = () => {
     if (datingApp === "tinder") {
 
         const xpath = "//div[text()='No Thanks']";
+        const maybeLaterXpath = "//div[text()='Maybe Later']";
         const noThanksButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        const maybeLaterButton = document.evaluate(maybeLaterXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            passive: true
+        });
         if (noThanksButton) {
-            const event = new MouseEvent('click', {
-                view: window,
-                bubbles: true,
-                cancelable: true,
-                passive: true
-            });
             noThanksButton.dispatchEvent(event);
             console.log('Closed "No Thanks" window');
+        } else if (maybeLaterButton) {
+            noThanksButton.dispatchEvent(event);
+            console.log('Closed "Maybe Later"" window');
         }
     } else if (datingApp === "badoo") {
         const xpath = "//button[contains(@data-qa, 'action-sheet-item')]";
@@ -220,6 +225,18 @@ const getOtherInfo = () => {
     }
     return Array.from(infoElements).map(el => stripHtml(el.innerHTML)).join('');
 };
+
+const detectNoMoreSwipes = () => {
+    if (datingApp === "tinder") {
+        const xpath = "//div[text()='Go Global']";
+        const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (element) {
+            chrome.storage.sync.set({ distanceRange: { min: distanceRange.min, max: distanceRange.max + 20 } });
+            distanceRange = { min: distanceRange.min, max: distanceRange.max + 20 };
+            console.log('No more swipes, increasing distance range');
+        }
+    }
+}
 
 const getName = () => {
     let nameElement;
@@ -452,6 +469,7 @@ const clearStatistics = () => {
 };
 
 const swiper = async () => {
+    detectNoMoreSwipes();
     closeRandomWindows();
     if (datingApp === "lovoo") {
         pressInfoButton();
