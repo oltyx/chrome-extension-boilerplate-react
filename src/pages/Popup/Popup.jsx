@@ -77,7 +77,7 @@ function Popup() {
             setShowToast(true);
           });
         } else {
-          console.error('No tab with Tinder open found');
+          console.log('No tab with Tinder open found');
           setToastMessage('No tab with Tinder open found');
           setShowToast(true);
         }
@@ -94,7 +94,7 @@ function Popup() {
             setShowToast(true);
           });
         } else {
-          console.error('No tab with Bumble open found');
+          console.log('No tab with Bumble open found');
           setToastMessage('No tab with Bumble open found');
           setShowToast(true);
         }
@@ -111,7 +111,7 @@ function Popup() {
             setShowToast(true);
           });
         } else {
-          console.error('No tab with Lovoo open found');
+          console.log('No tab with Lovoo open found');
           setToastMessage('No tab with Lovoo open found');
           setShowToast(true);
         }
@@ -128,8 +128,25 @@ function Popup() {
             setShowToast(true);
           });
         } else {
-          console.error('No tab with Badoo open found');
+          console.log('No tab with Badoo open found');
           setToastMessage('No tab with Badoo open found');
+          setShowToast(true);
+        }
+      });
+      chrome.tabs.query({ url: '*://*.okcupid.com/*' }, (tabs) => {
+        if (tabs.length > 0) {
+          chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError.message);
+              setToastMessage(`Error: ${chrome.runtime.lastError.message}`);
+            } else {
+              setToastMessage(`Action ${action} sent: ${response.status}`);
+            }
+            setShowToast(true);
+          });
+        } else {
+          console.log('No tab with OkCupid open found');
+          setToastMessage('No tab with OkCupid open found');
           setShowToast(true);
         }
       });

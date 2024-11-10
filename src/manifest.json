@@ -13,7 +13,8 @@
     "https://*.tinder.com/*",
     "https://*.lovoo.com/*",
     "https://*.bumble.com/*",
-    "https://*.badoo.com/*"
+    "https://*.badoo.com/*",
+    "https://*.okcupid.com/*"
   ],
   "background": {
     "service_worker": "background.bundle.js"
@@ -31,7 +32,8 @@
         "https://*.tinder.com/*",
         "https://*.lovoo.com/*",
         "https://*.bumble.com/*",
-        "https://*.badoo.com/*"
+        "https://*.badoo.com/*",
+        "https://*.okcupid.com/*"
       ],
       "js": [
         "contentScript.bundle.js"
