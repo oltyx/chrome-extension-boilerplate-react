@@ -1,6 +1,6 @@
 {
   "name": "quickswiper",
-  "version": "1.5.2",
+  "version": "1.6.1",
   "description": "A chrome extension boilerplate built with React 18, Webpack 5, and Webpack Dev Server 4",
   "license": "MIT",
   "repository": {
