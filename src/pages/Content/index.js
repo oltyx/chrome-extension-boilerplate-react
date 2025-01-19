@@ -156,6 +156,27 @@ const swipe = async (direction) => {
         } else {
             console.log(`${action} button not found`);
         }
+    } else if (datingApp === "okcupid") {
+        action = direction === 'right' ? 'Like' : direction === 'instant' ? 'SuperLike' : 'Pass';
+        xpath = `//button[contains(@data-cy, 'discover.actionButton${action}')]`;
+        button = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        if (button) {
+            try {
+                button.focus();
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                button.dispatchEvent(event);
+                console.log(`Swiped ${direction}`);
+            } catch (e) {
+                console.log(`MouseEvent failed: ${e}`);
+            }
+        } else {
+            console.log(`${action} button not found`);
+        }
     }
 
 };
@@ -163,19 +184,22 @@ const swipe = async (direction) => {
 const closeRandomWindows = () => {
     if (datingApp === "tinder") {
 
-        const xpath_nothanks = "//div[text()='No Thanks']";
-        const noThanksButton = document.evaluate(xpath_nothanks, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        const xpath_maybelate = "//div[text()='Maybe Later']";
-        const maybelaterButton = document.evaluate(xpath_maybelate, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        const xpath = "//div[text()='No Thanks']";
+        const maybeLaterXpath = "//div[text()='Maybe Later']";
+        const noThanksButton = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        const maybeLaterButton = document.evaluate(maybeLaterXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            passive: true
+        });
         if (noThanksButton) {
-            const event = new MouseEvent('click', {
-                view: window,
-                bubbles: true,
-                cancelable: true,
-                passive: true
-            });
             noThanksButton.dispatchEvent(event);
             console.log('Closed "No Thanks" window');
+        } else if (maybeLaterButton) {
+            maybeLaterButton.dispatchEvent(event);
+            console.log('Closed "Maybe Later"" window');
         }
         if (maybelaterButton) {
             const event = new MouseEvent('click', {
@@ -217,8 +241,11 @@ const getDescription = () => {
     } else if (datingApp === "badoo") {
         const descriptionElement = document.querySelector('span.csms-text-break-words');
         return descriptionElement ? stripHtml(descriptionElement.innerHTML) : "";
+    } else if (datingApp === "okcupid") {
+        const descriptionElements = document.querySelectorAll('span[class*="dt-essay-text"]');
+        return descriptionElements ? Array.from(descriptionElements).map(el => stripHtml(el.innerHTML)).join(' ') : "";
     }
-};
+}
 
 const getOtherInfo = () => {
     let infoElements
@@ -230,9 +257,25 @@ const getOtherInfo = () => {
         return null
     } else if (datingApp === "badoo") {
         infoElements = document.querySelectorAll('span.csms-badge__text');
+    } else if (datingApp === "okcupid") {
+        infoElements = document.querySelectorAll('div[class*="matchprofile-details-section"]');
+    } else {
+        return null
     }
     return Array.from(infoElements).map(el => stripHtml(el.innerHTML)).join('');
 };
+
+const detectNoMoreSwipes = () => {
+    if (datingApp === "tinder") {
+        const xpath = "//div[text()='Go Global']";
+        const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (element) {
+            chrome.storage.sync.set({ distanceRange: { min: distanceRange.min, max: distanceRange.max + 20 } });
+            distanceRange = { min: distanceRange.min, max: distanceRange.max + 20 };
+            console.log('No more swipes, increasing distance range');
+        }
+    }
+}
 
 const getName = () => {
     let nameElement;
@@ -245,6 +288,8 @@ const getName = () => {
         nameElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[0];
     } else if (datingApp === "badoo") {
         nameElement = document.querySelector('span[data-qa="profile-info__name"]');
+    } else if (datingApp === "okcupid") {
+        nameElement = document.querySelector('.card-content-header__name .card-content-header__text')
     }
 
     return nameElement ? nameElement.innerHTML : "";
@@ -253,14 +298,26 @@ const getName = () => {
 const getAge = () => {
     let ageElement
     if (datingApp === "tinder") {
+<<<<<<< HEAD
         ageElement = document.querySelectorAll('[itemprop="age"]')[1];
         return ageElement ? parseInt(ageElement.innerHTML, 10) : ageRange.min;
+=======
+        ageElement = document.querySelector('span.Whs\\(nw\\)');
+        return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
+>>>>>>> f26bbe7c17966e87a6dd7b9d7210a1a6a23c8277
     } else if (datingApp === "lovoo") {
         ageElement = document.querySelector('div.modal-users-sidebar h2').innerHTML.split(',')[1];
         return ageElement ? parseInt(ageElement, 10) : ageRange.min;
     } else if (datingApp === "badoo") {
         ageElement = document.querySelector('span[data-qa="profile-info__age"]');
+<<<<<<< HEAD
         return ageElement ? parseInt(ageElement.innerHTML, 10) : ageRange.min;
+=======
+        return ageElement ? parseInt(ageElement.innerHTML, 10) : 0;
+    } else if (datingApp === "okcupid") {
+        ageElement = document.querySelector('.card-content-header__location');
+        return ageElement ? parseInt(ageElement.innerHTML.split(' • ')[0], 10) : 0;
+>>>>>>> f26bbe7c17966e87a6dd7b9d7210a1a6a23c8277
     }
 
 };
@@ -290,6 +347,14 @@ const getPhotos = () => {
             console.error(`Error processing element: ${error}`);
             return 1;
         }
+    } else if (datingApp === "okcupid") {
+        try {
+            const spanElements = document.querySelectorAll('div[class*="preloaded-image"]');
+            return spanElements.length;
+        } catch (error) {
+            console.error(`Error processing element: ${error}`);
+            return 0;
+        }
     }
 };
 
@@ -304,6 +369,8 @@ const getVerified = () => {
         element = document.querySelector('div[ng-if="user.freetext != \'\' && user.verified"] img');
     } else if (datingApp === "badoo") {
         element = document.querySelector('span[data-qa-icon-name="badge-feature-verification"]');
+    } else if (datingApp === "okcupid") {
+        element = document.querySelector('div[aria-label="verified"]');
     }
     return element ? true : false;
 };
@@ -319,6 +386,7 @@ const getDistance = () => {
             return null;
         }
     } else if (datingApp === "tinder") {
+<<<<<<< HEAD
         const kilometersDiv = document.getElementsByClassName('Typs(body-1-regular) C($c-ds-text-primary) Mstart(8px)')[0]
         if (kilometersDiv) {
             const textContent = kilometersDiv.textContent.trim();
@@ -327,6 +395,19 @@ const getDistance = () => {
         } else {
             console.log('Kilometers div not found.');
             return distanceRange.min;
+=======
+        const svg = document.querySelector('svg.Va\\(tt\\).Sq\\(16px\\)[aria-hidden="true"][role="presentation"] path[d="M12.301 23.755c.746-.659 9.449-8.339 9.449-14.337C21.75 4.138 17.463 0 11.998 0 6.534 0 2.25 4.138 2.25 9.418c0 2.675 1.602 5.91 4.769 9.616a45.204 45.204 0 0 0 4.737 4.759l.246.207.26-.21zm-.305-2.424c.94-.889 2.376-2.32 3.77-4.011 1.084-1.315 2.105-2.741 2.847-4.152.753-1.433 1.142-2.705 1.142-3.75 0-4.113-3.328-7.423-7.757-7.423-4.428 0-7.753 3.309-7.753 7.423 0 1.941 1.208 4.713 4.29 8.319a42.901 42.901 0 0 0 3.461 3.594"]')
+        if (svg) {
+            const kilometersDiv = svg.parentElement.parentElement.nextElementSibling
+            if (kilometersDiv) {
+                const textContent = kilometersDiv.textContent.trim();
+                const kilometers = textContent.match(/\d+/)[0]; // Extract only the number
+                return parseInt(kilometers, 10);
+            } else {
+                console.log('Kilometers div not found.');
+                return null;
+            }
+>>>>>>> f26bbe7c17966e87a6dd7b9d7210a1a6a23c8277
         }
         //}
         // else if (datingApp === "lovoo") {
@@ -420,11 +501,11 @@ const checkKeywords = () => {
     const description = getDescription();
     const otherInfo = getOtherInfo();
     const name = getName();
-    if (keywords === null || blacklist === null) {
+    if (keywords === null) {
         return true
-    } else if (keywords === "" || blacklist === "") {
+    } else if (keywords === "") {
         return true
-    } else if (keywords.length < 1 || blacklist.length < 1) {
+    } else if (keywords.length < 1) {
         return true
     } else {
         const content = (description + otherInfo + name).toLowerCase();
@@ -462,6 +543,7 @@ const clearStatistics = () => {
 };
 
 const swiper = async () => {
+    //detectNoMoreSwipes();
     closeRandomWindows();
     if (datingApp === "lovoo") {
         pressInfoButton();
@@ -506,6 +588,7 @@ const swiper = async () => {
             countSwipes('instant');
         } else {
             console.log(`Age: ${age}, Distance: ${distance}`);
+            console.log(getDescription());
             await swipe('right');
             countSwipes('right');
         }
@@ -542,6 +625,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         else if (window.location.href.includes("tinder.com")) datingApp = "tinder";
         else if (window.location.href.includes("lovoo.com")) datingApp = "lovoo";
         else if (window.location.href.includes("badoo.com")) datingApp = "badoo";
+        else if (window.location.href.includes("okcupid.com")) datingApp = "okcupid";
         else datingApp = "unknown";
         // getSubscription().then(() => {
         console.log('Received start message');
